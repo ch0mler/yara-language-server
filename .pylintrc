@@ -1,0 +1,14 @@
+[MASTER]
+extension-pkg-whitelist=yara
+
+[MESSAGES CONTROL]
+disable=
+    inconsistent-return-statements,
+    line-too-long,
+    too-many-arguments,
+    too-many-branches,
+    too-many-locals,
+    too-many-nested-blocks
+
+[REPORTS]
+output-format=colorized
