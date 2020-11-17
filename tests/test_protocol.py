@@ -2,8 +2,8 @@
 import json
 
 import pytest
-from yarals import protocol
-from yarals import custom_err as ce
+from yarals.base import protocol
+from yarals.base import errors as ce
 
 
 @pytest.mark.protocol

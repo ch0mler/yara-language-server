@@ -2,8 +2,8 @@
 from urllib.parse import quote
 
 import pytest
-from yarals import helpers, protocol
-
+from yarals import helpers
+from yarals.base import protocol
 
 @pytest.mark.helpers
 def test_create_file_uri(test_rules):

@@ -4,7 +4,7 @@ import logging
 
 import pytest
 from yarals import helpers
-from yarals import protocol
+from yarals.base import protocol
 
 # don't care about pylint(protected-access) warnings since these are just tests
 # pylint: disable=W0212

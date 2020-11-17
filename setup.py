@@ -30,7 +30,7 @@ setup(
     package_data={"yarals": ["data/*.json"]},
     provides=["yarals"],
     python_requires=">=3.7",
-    tests_require=["pytest", "pytest-asyncio"],
+    tests_require=["pytest", "pytest-asyncio", "pytest-timeout"],
     url="https://ch0mler.github.io/yara-language-server/",
     version="0.1",
 )

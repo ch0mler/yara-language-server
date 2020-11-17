@@ -3,7 +3,8 @@ import json
 import logging
 
 import pytest
-from yarals import helpers, protocol
+from yarals import helpers
+from yarals.base import protocol
 
 
 @pytest.mark.asyncio
