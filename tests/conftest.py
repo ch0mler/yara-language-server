@@ -67,7 +67,7 @@ async def init_server(initialize_msg, initialized_msg):
 @pytest.fixture(scope="function")
 def test_rules():
     ''' Resolve full path to the test YARA rules '''
-    rules_path = Path(__file__).parent.joinpath("..", "..", "test", "rules")
+    rules_path = Path(__file__).parent.joinpath("rules")
     return rules_path.resolve()
 
 @pytest.fixture(scope="module")
