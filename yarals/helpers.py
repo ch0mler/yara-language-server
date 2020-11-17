@@ -4,7 +4,7 @@ from typing import Tuple
 from urllib.parse import quote, unquote, urlsplit
 from urllib.request import url2pathname
 
-from yarals.language_server import protocol as lsp
+from yarals.base import protocol as lsp
 
 
 def create_file_uri(path: str):

@@ -7,9 +7,9 @@ import logging
 from pathlib import Path
 import re
 
-from yarals.language_server import protocol as lsp
-from yarals.language_server.base import LanguageServer
-from yarals.language_server import errors as ce
+from .base import protocol as lsp
+from .base.server import LanguageServer
+from .base import errors as ce
 from . import helpers
 
 try:

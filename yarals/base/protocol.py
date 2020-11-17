@@ -1,4 +1,4 @@
-''' VSCode Language Server Protocol Definitions
+''' Language Server Protocol Definitions
 
 For more info: https://microsoft.github.io/language-server-protocol/specification
 '''

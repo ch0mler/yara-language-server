@@ -1,4 +1,4 @@
-''' Errors specific to the YARA Language Server '''
+''' Errors specific to the Language Server Protocol '''
 
 class CodeCompletionError(Exception):
     ''' Custom error for code completion feature '''
