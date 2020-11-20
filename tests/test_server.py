@@ -17,6 +17,7 @@ try:
 except ImportError:
     from concurrent.futures import CancelledError
 
+
 @pytest.mark.skip(reason="not implemented")
 @pytest.mark.command
 def test_cmd_compile_rule():
@@ -114,6 +115,7 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
+    ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when workspace files have unsaved content '''
     expected = [
         protocol.Diagnostic(
             protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
@@ -134,7 +136,8 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
     # files won't actually be changed, so the diagnostics should reflect the "no_dirty_files" test
     dirty_files = {}
     for filename in ["peek_rules.yara", "simple_mistake.yar", "code_completion.yara"]:
-        dirty_files[helpers.create_file_uri(str(test_rules.joinpath(filename).resolve()))] = yara_server._get_document(filename, dirty_files={})
+        dirty_uri = str(test_rules.joinpath(filename).resolve())
+        dirty_files[helpers.create_file_uri(dirty_uri)] = yara_server._get_document(dirty_uri, dirty_files={})
     result = await yara_server._compile_all_rules(dirty_files, workspace=test_rules)
     print(json.dumps(result, cls=protocol.JSONEncoder))
     assert len(result) == len(expected)

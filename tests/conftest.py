@@ -1,7 +1,6 @@
 ''' Reusable test fixtures '''
 import asyncio
 import json
-import logging
 from pathlib import Path
 
 import pytest

@@ -5,6 +5,7 @@ import pytest
 from yarals import helpers
 from yarals.base import protocol
 
+
 @pytest.mark.helpers
 def test_create_file_uri(test_rules):
     ''' Ensure file URIs are generated from paths '''

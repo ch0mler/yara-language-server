@@ -119,6 +119,7 @@ class Diagnostic():
         self.range = locrange
         if not isinstance(relatedInformation, list):
             raise TypeError("Location range cannot be {}. Must be a list of strings".format(type(relatedInformation)))
+        # pylint: disable=C0103
         self.relatedInformation = relatedInformation
         self.severity = int(severity)
 
