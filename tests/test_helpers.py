@@ -10,7 +10,7 @@ from yarals.base import protocol
 def test_create_file_uri(test_rules):
     ''' Ensure file URIs are generated from paths '''
     test_rule_path = str(test_rules)
-    expected = "file:///{}".format(quote(test_rule_path.replace("\\", "/"), safe="/\\"))
+    expected = "file://{}".format(quote(test_rule_path.replace("\\", "/"), safe="/\\"))
     output = helpers.create_file_uri(test_rule_path)
     assert output == expected
 
