@@ -91,56 +91,85 @@ def test_cmd_compile_all_rules_no_workspace():
 async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
     ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when no workspace files are dirty '''
     expected = [
-        protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
-            severity=protocol.DiagnosticSeverity.ERROR,
-            message="syntax error, unexpected <true>, expecting text string"
-        ),
-        protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=10, char=0), protocol.Position(line=10, char=yara_server.MAX_LINE)),
-            severity=protocol.DiagnosticSeverity.ERROR,
-            message="wrong usage of identifier \"cuckoo\""
-        ),
-        protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=4, char=0), protocol.Position(line=4, char=yara_server.MAX_LINE)),
-            severity=protocol.DiagnosticSeverity.ERROR,
-            message="undefined string \"$true\""
-        )
+        {
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("peek_rules.yara").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="syntax error, unexpected <true>, expecting text string"
+                )
+            ]
+        },
+        {
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("code_completion.yara").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=10, char=0), protocol.Position(line=10, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="wrong usage of identifier \"cuckoo\""
+                )
+            ]
+        },
+        {
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("simple_mistake.yar").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=4, char=0), protocol.Position(line=4, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="undefined string \"$true\""
+                )
+            ]
+        }
     ]
-    result = await yara_server._compile_all_rules({}, workspace=test_rules)
-    print(json.dumps(result, cls=protocol.JSONEncoder))
-    assert len(result) == len(expected)
-    assert json.dumps(result, cls=protocol.JSONEncoder) == json.dumps(expected, cls=protocol.JSONEncoder)
+    results = await yara_server._compile_all_rules({}, workspace=test_rules)
+    assert len(results) == len(expected)
+    assert all(result in expected for result in results)
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
     ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when workspace files have unsaved content '''
     expected = [
-        protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
-            severity=protocol.DiagnosticSeverity.ERROR,
-            message="syntax error, unexpected <true>, expecting text string"
-        ),
-        protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=10, char=0), protocol.Position(line=10, char=yara_server.MAX_LINE)),
-            severity=protocol.DiagnosticSeverity.ERROR,
-            message="wrong usage of identifier \"cuckoo\""
-        ),
-        protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=4, char=0), protocol.Position(line=4, char=yara_server.MAX_LINE)),
-            severity=protocol.DiagnosticSeverity.ERROR,
-            message="undefined string \"$true\""
-        )
+        {
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("peek_rules.yara").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="syntax error, unexpected <true>, expecting text string"
+                )
+            ]
+        },
+        {
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("code_completion.yara").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=10, char=0), protocol.Position(line=10, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="wrong usage of identifier \"cuckoo\""
+                )
+            ]
+        },
+        {
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("simple_mistake.yar").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=4, char=0), protocol.Position(line=4, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="undefined string \"$true\""
+                )
+            ]
+        }
     ]
     # files won't actually be changed, so the diagnostics should reflect the "no_dirty_files" test
     dirty_files = {}
     for filename in ["peek_rules.yara", "simple_mistake.yar", "code_completion.yara"]:
-        dirty_uri = str(test_rules.joinpath(filename).resolve())
-        dirty_files[helpers.create_file_uri(dirty_uri)] = yara_server._get_document(dirty_uri, dirty_files={})
-    result = await yara_server._compile_all_rules(dirty_files, workspace=test_rules)
-    print(json.dumps(result, cls=protocol.JSONEncoder))
-    assert len(result) == len(expected)
+        dirty_path = str(test_rules.joinpath(filename).resolve())
+        dirty_files[helpers.create_file_uri(dirty_path)] = yara_server._get_document(dirty_path, dirty_files={})
+    results = await yara_server._compile_all_rules(dirty_files, workspace=test_rules)
+    assert len(results) == len(expected)
+    assert all(result in expected for result in results)
 
 @pytest.mark.asyncio
 @pytest.mark.server

@@ -259,8 +259,8 @@ class YaraLanguageServer(LanguageServer):
         documents = deepcopy(dirty_files)
         if workspace:
             self._logger.info("Compiling all rules in %s per user's request", workspace)
-            for file in chain(workspace.glob("**/*.yara"), workspace.glob("**/*.yar")):
-                file_uri = file.as_uri()
+            for file_path in chain(workspace.glob("**/*.yara"), workspace.glob("**/*.yar")):
+                file_uri = helpers.create_file_uri(file_path)
                 documents[file_uri] = self._get_document(file_uri, dirty_files)
         else:
             self._logger.warning("No workspace specified. CompileAllRules will only work on open docs")
