@@ -1,0 +1,1 @@
+rule Test { strings: $a="test" condition: $a }
