@@ -43,6 +43,10 @@ class YaraLanguageServer(LanguageServer):
         with open(file_path, "r") as rule_file:
             return rule_file.read()
 
+    def _get_yara_version(self) -> str:
+        ''' Return the version of the underlying YARA library, if available '''
+        return yara.YARA_VERSION if HAS_YARA else ''
+
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         '''React and respond to client messages
 

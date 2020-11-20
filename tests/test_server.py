@@ -86,6 +86,13 @@ def test_cmd_compile_all_rules_no_workspace():
     }
     assert request is False
 
+@pytest.mark.server
+def test__get_yara_version(yara_server):
+    ''' Ensure the _get_yara_version() function returns the same YARA version as the import'''
+    # pylint: disable=C0415
+    import yara
+    assert yara_server._get_yara_version() == yara.YARA_VERSION
+
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
