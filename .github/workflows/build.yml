@@ -52,6 +52,8 @@ jobs:
         path: pylint-*.txt
     - name: Upload pytest results
       uses: actions/upload-artifact@v2
+      # don't really care if every test passes
+      if: fail()
       with:
         name: pytest-results-${{ matrix.os }}-${{ matrix.python-version }}.txt
         path: pytest-results.txt
