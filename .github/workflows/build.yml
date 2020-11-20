@@ -34,10 +34,10 @@ jobs:
         echo "YARALS_VERSION=$(pip show yarals | grep Version | cut -d ' ' -f2)" >> $GITHUB_ENV
     - name: Lint Package
       run: |
-        pylint --rcfile=.pylintrc ./yarals | tee pylint-pkg.txt
+        pylint --rcfile=.pylintrc --exit-zero ./yarals | tee pylint-pkg.txt
     - name: Lint Tests
       run: |
-        pylint --rcfile=.pylintrc --disable=protected-access,import-error $(ls -R ./tests/test_*.py) | tee pylint-tests.txt
+        pylint --rcfile=.pylintrc --exit-zero --disable=protected-access,import-error,duplicate-code $(ls -R ./tests/test_*.py) | tee pylint-tests.txt
     - name: Run tests
       run: |
         pytest -vv --color=yes --timeout 10 | tee pytest-results.txt
