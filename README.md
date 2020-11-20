@@ -1,6 +1,6 @@
 # YARA Language Server
 
-[build_badge](https://github.com/ch0mler/yara-language-server/workflows/build/badge.svg)
+![build_badge](https://github.com/ch0mler/yara-language-server/workflows/build/badge.svg)
 
 An implementation of the Language Server Protocol for the YARA pattern-matching language.
 
