@@ -10,6 +10,8 @@ from . import errors as ce
 
 EOL: list = ["\n", "\r\n", "\r"]
 
+# pylint: disable=C0115
+
 
 # Protocol Constants
 class CompletionTriggerKind(IntEnum):
@@ -79,6 +81,20 @@ class Position():
         self.line = int(line)
         self.char = int(char)
 
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.line == other.line) and (self.char == other.char)
+        except AttributeError:
+            # if the other object doesn't have any of these methods
+            # it's not the same thing, and we shouldn't bother comparing
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.line != other.line) or (self.char != other.char)
+        except AttributeError:
+            return True
+
     def __repr__(self):
         return "<Position(line={:d}, char={:d})>".format(self.line, self.char)
 
@@ -95,6 +111,18 @@ class Range():
         self.start = start
         self.end = end
 
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.start == other.start) and (self.end == other.end)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.start != other.start) or (self.end != other.end)
+        except AttributeError:
+            return True
+
     def __repr__(self):
         return "<Range(start={}, end={})>".format(self.start, self.end)
 
@@ -103,6 +131,18 @@ class CompletionItem():
         ''' Suggested items for the programmer '''
         self.label = str(label)
         self.kind = int(kind)
+
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.label == other.label) and (self.kind == other.kind)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.label != other.label) or (self.kind != other.kind)
+        except AttributeError:
+            return True
 
     def __repr__(self):
         return "<CompletionItem(label={}, kind={:d})>".format(self.label, self.kind)
@@ -123,6 +163,24 @@ class Diagnostic():
         self.relatedInformation = relatedInformation
         self.severity = int(severity)
 
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.severity == other.severity) and \
+                (self.range == other.range) and \
+                (self.message == other.message) and \
+                (self.relatedInformation == other.relatedInformation)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.severity != other.severity) or \
+                (self.range != other.range) or \
+                (self.message != other.message) or \
+                (self.relatedInformation != other.relatedInformation)
+        except AttributeError:
+            return True
+
     def __repr__(self):
         return "<Diagnostic(severity={:d}, message={})>".format(self.severity, self.message)
 
@@ -136,6 +194,18 @@ class Location():
         self.range = locrange
         self.uri = str(uri)
 
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.range == other.range) and (self.uri == other.uri)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.range != other.range) or (self.uri != other.uri)
+        except AttributeError:
+            return True
+
     def __repr__(self):
         return "<Location(range={}, uri={})>".format(self.range, self.uri)
 
@@ -148,6 +218,18 @@ class MarkupContent():
             raise TypeError("Markup kind cannot be {}. Must be MarkupKind".format(type(kind)))
         self.kind = kind
         self.value = str(content)
+
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.value == other.value) and (self.kind == other.kind)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.value != other.value) or (self.kind != other.kind)
+        except AttributeError:
+            return True
 
     def __repr__(self):
         return "<MarkupContent(value={}, kind={:d})>".format(self.value, self.kind)
@@ -164,6 +246,18 @@ class Hover():
         if not isinstance(contents, MarkupContent):
             raise TypeError("Contents cannot be {}. Must be MarkupContent".format(type(contents)))
         self.contents = contents
+
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.range == other.range) and (self.contents == other.contents)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.range != other.range) or (self.contents != other.contents)
+        except AttributeError:
+            return True
 
 class ResponseError():
     ''' The error object in case a request fails '''
@@ -192,6 +286,18 @@ class ResponseError():
             code = JsonRPCError.INTERNAL_ERROR
         return ResponseError(code=code, message=exception.args[0])
 
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.code == other.code) and (self.message == other.message) and (self.data == other.data)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.code != other.code) or (self.message != other.message) or (self.data != other.data)
+        except AttributeError:
+            return True
+
     def __repr__(self):
         return "<ResponseError(code={:d}, message={})>".format(self.code, self.message)
 
@@ -204,6 +310,18 @@ class TextEdit():
         if not isinstance(newText, str):
             raise TypeError("NewText cannot be {}. Must be a plaintext string".format(type(newText)))
         self.newText = newText
+
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.range == other.range) and (self.newText == other.newText)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.range != other.range) or (self.newText != other.newText)
+        except AttributeError:
+            return True
 
     def __repr__(self):
         return "<TextEdit(newText={})>".format(self.newText)
@@ -227,6 +345,18 @@ class WorkspaceEdit():
         if not isinstance(change, TextEdit):
             raise TypeError("Change cannot be {}. Must be TextEdit".format(type(change)))
         return self.changes.append(change)
+
+    def __eq__(self, other) -> bool:
+        try:
+            return (self.changes == other.changes) and (self.uri == other.uri)
+        except AttributeError:
+            return False
+
+    def __ne__(self, other) -> bool:
+        try:
+            return (self.changes != other.changes) or (self.uri != other.uri)
+        except AttributeError:
+            return True
 
     def __repr__(self):
         return "<WorkspaceEdit(changes={:d})>".format(len(self.changes))
