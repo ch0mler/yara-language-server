@@ -53,10 +53,10 @@ def test_parse_result_multicolon():
 @pytest.mark.skipif('sys.platform == "win32"')
 def test_parse_uri():
     ''' Ensure paths are properly parsed '''
-    path = "c:/one/two/three/four.txt"
-    file_uri = "file:///{}".format(path)
+    path = "/one/two/three/four.txt"
+    file_uri = "file://{}".format(path)
     # leading forward slash should be added for non-Windows systems
-    assert helpers.parse_uri(file_uri) == "/{}".format(path)
+    assert helpers.parse_uri(file_uri) == path
 
 @pytest.mark.helpers
 @pytest.mark.skipif('sys.platform != "win32"')

@@ -1,8 +1,7 @@
 ''' Helper functions that don't quite fit elsewhere '''
-from pathlib import Path
 import re
 from typing import Tuple
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 from urllib.request import url2pathname
 
 from yarals.base import protocol as lsp
@@ -13,7 +12,8 @@ def create_file_uri(path: str):
 
     :path: Filepath to create a URI from
     '''
-    return Path(path).resolve().as_uri()
+    # if this is a windows path, the slashes need to be reversed
+    return "file://{}".format(quote(str(path).replace("\\", "/"), safe="/\\"))
 
 def get_first_non_whitespace_index(line: str) -> int:
     '''Get the first non-whitespace character index in a given line
