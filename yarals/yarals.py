@@ -236,7 +236,7 @@ class YaraLanguageServer(LanguageServer):
 
         Returns any results from the command
         '''
-        response = { "result": None }
+        response = {"result": None}
         cmd = params.get("command", "")
         args = params.get("arguments", [])
         try:
