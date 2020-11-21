@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 
 from .base import protocol as lsp
-from .base.server import LanguageServer
+from .base import server
 from .base import errors as ce
 from . import helpers
 
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
     logging.warning("yara-python is not installed. Diagnostics and Compile commands are disabled")
 
 
-class YaraLanguageServer(LanguageServer):
+class YaraLanguageServer(server.LanguageServer):
     ''' Implements the language server for YARA '''
     def __init__(self):
         ''' Handle the particulars of the server's YARA implementation '''
@@ -192,6 +192,7 @@ class YaraLanguageServer(LanguageServer):
                 }
                 await self.send_notification("window/showMessage", params, writer)
 
+    @server.route("initialize")
     def initialize(self, client_options: dict) -> dict:
         '''Announce language support methods
 
@@ -231,6 +232,7 @@ class YaraLanguageServer(LanguageServer):
             server_options["textDocumentSync"] = lsp.TextSyncKind.FULL
         return {"capabilities": server_options}
 
+    @server.route("workspace/executeCommand")
     async def execute_command(self, params: dict, dirty_files: dict, writer: asyncio.StreamWriter) -> dict:
         '''Execute the specified command
 
@@ -280,6 +282,7 @@ class YaraLanguageServer(LanguageServer):
                 })
         return diagnostics
 
+    @server.route("textDocument/completion")
     async def provide_code_completion(self, params: dict, document: str) -> list:
         '''Respond to the completionItem/resolve request
 
@@ -318,6 +321,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.CodeCompletionError("Could not offer completion items: {}".format(err))
 
+    @server.route("textDocument/definition")
     async def provide_definition(self, params: dict, document: str) -> list:
         '''Respond to the textDocument/definition request
 
@@ -424,6 +428,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.DiagnosticError("Could not compile rule: {}".format(err))
 
+    @server.route("textDocument/highlight")
     async def provide_highlight(self, params: dict, document: str) -> list:
         ''' Respond to the textDocument/documentHighlight request '''
         try:
@@ -434,6 +439,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.HighlightError("Could not offer code highlighting: {}".format(err))
 
+    @server.route("textDocument/hover")
     async def provide_hover(self, params: dict, document: str) -> list:
         ''' Respond to the textDocument/hover request '''
         try:
@@ -455,6 +461,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.HoverError("Could not offer definition hover: {}".format(err))
 
+    @server.route("textDocument/references")
     async def provide_reference(self, params: dict, document: str) -> list:
         '''The references request is sent from the client to the server to resolve
         project-wide references for the symbol denoted by the given text document position
@@ -514,6 +521,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.SymbolReferenceError("Could not find references for '{}': {}".format(symbol, err))
 
+    @server.route("textDocument/rename")
     async def provide_rename(self, params: dict, document: str, file_uri: str) -> list:
         ''' Respond to the textDocument/rename request '''
         results = lsp.WorkspaceEdit(file_uri=file_uri, changes=[])

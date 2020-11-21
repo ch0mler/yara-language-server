@@ -5,10 +5,27 @@ A basic implementation of the Language Server Protocol
 import asyncio
 import json
 import logging
+from functools import wraps
 
 from . import errors as ce
 from . import protocol as lsp
 
+
+def route(request):
+    '''
+    Decorator to route JSON-RPC requests to the appropriate method
+
+    Usage:
+        @server.route("textDocument/completion")
+        def provide_code_completion(self, *args, **kwargs)
+    '''
+    def wrapper(func):
+        @wraps(func)
+        def _wrap_route(self, *args, **kwargs):
+            logging.info("@server.route('%s'): %s, %s", request, args, kwargs)
+            return func(self, *args, **kwargs)
+        return _wrap_route
+    return wrapper
 
 class LanguageServer():
     '''
