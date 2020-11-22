@@ -43,17 +43,18 @@ class YaraLanguageServer(server.LanguageServer):
         self.diagnostics_warned = False
         schema = Path(__file__).parent.joinpath("data", "modules.json").resolve()
         self.modules = json.loads(schema.read_text())
-        self.routes = {}
-        self.workspace = False
         # set request routes for this instance
-        self._route("initialize", self.initialize)
-        self._route("workspace/executeCommand", self.execute_command)
-        self._route("textDocument/completion", self.provide_code_completion)
-        self._route("textDocument/definition", self.provide_definition)
-        self._route("textDocument/documentHighlight", self.provide_highlight)
-        self._route("textDocument/hover", self.provide_hover)
-        self._route("textDocument/references", self.provide_reference)
-        self._route("textDocument/rename", self.provide_rename)
+        self.routes = {
+            "initialize": self.initialize,
+            "workspace/executeCommand": self.execute_command,
+            "textDocument/completion": self.provide_code_completion,
+            "textDocument/definition": self.provide_definition,
+            "textDocument/documentHighlight": self.provide_highlight,
+            "textDocument/hover": self.provide_hover,
+            "textDocument/references": self.provide_reference,
+            "textDocument/rename": self.provide_rename,
+        }
+        self.workspace = False
 
     def _get_document(self, file_uri: str, dirty_files: dict) -> str:
         ''' Return the document text for a given file URI either from disk or memory '''
@@ -67,9 +68,9 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Return the version of the underlying YARA library, if available '''
         return yara.YARA_VERSION if HAS_YARA else ''
 
-    def _route(self, method, func):
-        ''' Route JSON-RPC requests to the appropriate method '''
-        self.routes[method] = func
+    # def _route(self, method, func):
+    #     ''' Route JSON-RPC requests to the appropriate method '''
+    #     self.routes[method] = func
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         '''React and respond to client messages
@@ -181,6 +182,7 @@ class YaraLanguageServer(server.LanguageServer):
                 await self.send_notification("window/showMessage", params, writer)
 
     # @_route("initialize")
+    # pylint: disable=W0613
     async def initialize(self, message: dict, has_started: bool, **kwargs) -> dict:
         '''Announce language support methods
 
