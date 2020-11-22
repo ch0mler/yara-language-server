@@ -106,7 +106,7 @@ class YaraLanguageServer(server.LanguageServer):
                         if method in self.routes:
                             self._logger.debug("Attempting to call %s() via '%s' route", self.routes[method].__name__, method)
                             # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
-                            response = self.routes[method](message, has_started, dirty_files=dirty_files, writer=writer)
+                            response = await self.routes[method](message, has_started, dirty_files=dirty_files, writer=writer)
                             if response:
                                 await self.send_response(message["id"], response, writer)
                         elif has_started and method == "shutdown":
