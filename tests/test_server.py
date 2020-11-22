@@ -226,12 +226,13 @@ async def test_code_completion_regular(test_rules, yara_server):
     code_completion = str(test_rules.joinpath("code_completion.yara").resolve())
     expected = ["network", "registry", "filesystem", "sync"]
     file_uri = helpers.create_file_uri(code_completion)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 9, "character": 15}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 9, "character": 15}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_code_completion(params, document)
+    result = await yara_server.provide_code_completion(message, True)
     assert len(result) == 4
     for completion in result:
         assert isinstance(completion, protocol.CompletionItem) is True
@@ -244,12 +245,13 @@ async def test_code_completion_overflow(test_rules, yara_server):
     ''' Ensure code completion doesn't return items or error out when a position doesn't exist in the file '''
     code_completion = str(test_rules.joinpath("code_completion.yara").resolve())
     file_uri = helpers.create_file_uri(code_completion)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 9, "character": 25}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 9, "character": 25}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_code_completion(params, document)
+    result = await yara_server.provide_code_completion(message, True)
     assert result == []
 
 @pytest.mark.asyncio
@@ -258,12 +260,13 @@ async def test_code_completion_unexpected(test_rules, yara_server):
     ''' Ensure code completion doesn't return items or error out when a symbol does not have any items to be completed '''
     code_completion = str(test_rules.joinpath("code_completion.yara").resolve())
     file_uri = helpers.create_file_uri(code_completion)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 8, "character": 25}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 8, "character": 25}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_code_completion(params, document)
+    result = await yara_server.provide_code_completion(message, True)
     assert result == []
 
 @pytest.mark.asyncio
@@ -272,12 +275,13 @@ async def test_definitions_rules(test_rules, yara_server):
     ''' Ensure definition is provided for a rule name '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 42, "character": 12}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 42, "character": 12}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert len(result) == 1
     assert isinstance(result[0], protocol.Location) is True
     assert result[0].uri == file_uri
@@ -292,12 +296,13 @@ async def test_definitions_private_rules(test_rules, yara_server):
     ''' Ensure definition is provided for a private rule name '''
     private_goto_rules = str(test_rules.joinpath("private_rule_goto.yara").resolve())
     file_uri = helpers.create_file_uri(private_goto_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 9, "character": 14}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 9, "character": 14}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert len(result) == 1
     assert isinstance(result[0], protocol.Location) is True
     assert result[0].uri == file_uri
@@ -312,12 +317,13 @@ async def test_definitions_variables_count(test_rules, yara_server):
     ''' Ensure definition is provided for a variable with count modifier (#) '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 28, "character": 12}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 28, "character": 12}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert len(result) == 1
     assert isinstance(result[0], protocol.Location) is True
     assert result[0].uri == file_uri
@@ -332,12 +338,13 @@ async def test_definitions_variables_length(test_rules, yara_server):
     ''' Ensure definition is provided for a variable with length modifier (!) '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 42, "character": 32}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 42, "character": 32}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert len(result) == 1
     assert isinstance(result[0], protocol.Location) is True
     assert result[0].uri == file_uri
@@ -352,12 +359,13 @@ async def test_definitions_variables_location(test_rules, yara_server):
     ''' Ensure definition is provided for a variable with location modifier (@) '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 29, "character": 12}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert len(result) == 1
     assert isinstance(result[0], protocol.Location) is True
     assert result[0].uri == file_uri
@@ -372,12 +380,13 @@ async def test_definitions_variables_regular(test_rules, yara_server):
     ''' Ensure definition is provided for a normal variable '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 24, "character": 12}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 24, "character": 12}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert len(result) == 1
     assert isinstance(result[0], protocol.Location) is True
     assert result[0].uri == file_uri
@@ -392,13 +401,14 @@ async def test_no_definitions(test_rules, yara_server):
     ''' Ensure no definition is provided for symbols that are not variables or rules '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 27, "character": 12},
-        "context": {"includeDeclaration": True}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 27, "character": 12},
+            "context": {"includeDeclaration": True}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_definition(params, document)
+    result = await yara_server.provide_definition(message, True)
     assert result == []
 
 @pytest.mark.asyncio
@@ -498,12 +508,13 @@ async def test_hover(test_rules, yara_server):
     ''' Ensure a variable's value is provided on hover '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 29, "character": 12}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_hover(params, document)
+    result = await yara_server.provide_hover(message, True)
     assert isinstance(result, protocol.Hover) is True
     assert result.contents.kind == protocol.MarkupKind.Plaintext
     assert result.contents.value == "\"double string\" wide nocase fullword"
@@ -549,12 +560,14 @@ async def test_no_hover(test_rules, yara_server):
     ''' Ensure non-variables do not return hovers '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 25, "character": 12}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 25, "character": 12}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_hover(params, document)
+    result = await yara_server.provide_hover(message, True)
+    print(result)
     assert result is None
 
 @pytest.mark.asyncio
@@ -594,12 +607,13 @@ async def test_no_references(test_rules, yara_server):
     ''' Ensure server does not return references if none are found '''
     alienspy = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
     file_uri = helpers.create_file_uri(alienspy)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 47, "character": 99},
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 47, "character": 99},
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_reference(params, document)
+    result = await yara_server.provide_reference(message, True)
     assert result == []
 
 @pytest.mark.asyncio
@@ -608,13 +622,14 @@ async def test_references_rules(test_rules, yara_server):
     ''' Ensure references to rules are returned at the start of the rule name '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 42, "character": 12},
-        "context": {"includeDeclaration": True}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 42, "character": 12},
+            "context": {"includeDeclaration": True}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_reference(params, document)
+    result = await yara_server.provide_reference(message, True)
     assert len(result) == 2
     for index, location in enumerate(result):
         assert isinstance(location, protocol.Location) is True
@@ -636,13 +651,14 @@ async def test_references_variable(test_rules, yara_server):
     ''' Ensure references to variables are returned at the start of the variable name '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 28, "character": 12},
-        "context": {"includeDeclaration": True}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 28, "character": 12},
+            "context": {"includeDeclaration": True}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_reference(params, document)
+    result = await yara_server.provide_reference(message, True)
     assert len(result) == 3
     for index, location in enumerate(result):
         assert isinstance(location, protocol.Location) is True
@@ -669,13 +685,14 @@ async def test_references_wildcard(test_rules, yara_server):
     ''' Ensure wildcard variables return references to all possible variables within rule they are found '''
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())
     file_uri = helpers.create_file_uri(peek_rules)
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 30, "character": 11},
-        "context": {"includeDeclaration": True}
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 30, "character": 11},
+            "context": {"includeDeclaration": True}
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_reference(params, document)
+    result = await yara_server.provide_reference(message, True)
     assert len(result) == 2
     for index, location in enumerate(result):
         assert isinstance(location, protocol.Location) is True
@@ -699,13 +716,14 @@ async def test_renames(test_rules, yara_server):
     file_uri = helpers.create_file_uri(peek_rules)
     # @dstring[1]: Line 30, Col 12
     new_text = "test_rename"
-    params = {
-        "textDocument": {"uri": file_uri},
-        "position": {"line": 29, "character": 12},
-        "newName": new_text
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "newName": new_text
+        }
     }
-    document = yara_server._get_document(file_uri, dirty_files={})
-    result = await yara_server.provide_rename(params, document, file_uri)
+    result = await yara_server.provide_rename(message, True)
     assert isinstance(result, protocol.WorkspaceEdit) is True
     assert len(result.changes) == 3
     acceptable_lines = [21, 28, 29]
