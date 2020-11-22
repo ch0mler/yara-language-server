@@ -44,16 +44,15 @@ class YaraLanguageServer(server.LanguageServer):
         schema = Path(__file__).parent.joinpath("data", "modules.json").resolve()
         self.modules = json.loads(schema.read_text())
         # set request routes for this instance
-        self.routes = {
-            "initialize": self.initialize,
-            "workspace/executeCommand": self.execute_command,
-            "textDocument/completion": self.provide_code_completion,
-            "textDocument/definition": self.provide_definition,
-            "textDocument/documentHighlight": self.provide_highlight,
-            "textDocument/hover": self.provide_hover,
-            "textDocument/references": self.provide_reference,
-            "textDocument/rename": self.provide_rename,
-        }
+        self.routes = {}
+        self._route("initialize", self.initialize)
+        self._route("workspace/executeCommand", self.execute_command)
+        self._route("textDocument/completion", self.provide_code_completion)
+        self._route("textDocument/definition", self.provide_definition)
+        self._route("textDocument/documentHighlight", self.provide_highlight)
+        self._route("textDocument/hover", self.provide_hover)
+        self._route("textDocument/references", self.provide_reference)
+        self._route("textDocument/rename", self.provide_rename)
         self.workspace = False
 
     def _get_document(self, file_uri: str, dirty_files: dict) -> str:
@@ -68,9 +67,11 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Return the version of the underlying YARA library, if available '''
         return yara.YARA_VERSION if HAS_YARA else ''
 
-    # def _route(self, method, func):
-    #     ''' Route JSON-RPC requests to the appropriate method '''
-    #     self.routes[method] = func
+    def _route(self, method, func):
+        ''' Route JSON-RPC requests to the appropriate method '''
+        method_object_name = func.__self__.__class__.__name__
+        logging.debug("Routing '%s' to '%s.%s()'", method, method_object_name, func.__name__)
+        self.routes[method] = func
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         '''React and respond to client messages
@@ -87,7 +88,7 @@ class YaraLanguageServer(server.LanguageServer):
         while True:
             try:
                 if reader.at_eof():
-                    self._logger.warning("Client has closed")
+                    self._logger.info("Client has closed")
                     self.num_clients -= 1
                     break
                 elif self.num_clients <= 0:
@@ -105,7 +106,6 @@ class YaraLanguageServer(server.LanguageServer):
                         # trying to generically handle JSON-RPC requests
                         # by sending the full request message to each method
                         if method in self.routes:
-                            self._logger.debug("Attempting to call %s() via '%s' route", self.routes[method].__name__, method)
                             # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
                             response = await self.routes[method](message, has_started, dirty_files=dirty_files, writer=writer)
                             if response:
