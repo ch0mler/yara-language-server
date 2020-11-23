@@ -1,7 +1,7 @@
 ''' Implements the language server for YARA '''
 import asyncio
 from copy import deepcopy
-from functools import wraps
+# from functools import wraps
 from itertools import chain
 import json
 import logging
@@ -43,8 +43,6 @@ class YaraLanguageServer(server.LanguageServer):
         self.diagnostics_warned = False
         schema = Path(__file__).parent.joinpath("data", "modules.json").resolve()
         self.modules = json.loads(schema.read_text())
-        self.event_handlers = {}
-        self._route("textDocument/didSave", self.event_did_save, notification=True)
         self.request_handlers = {}
         self._route("initialize", self.initialize)
         self._route("shutdown", self.shutdown)
@@ -55,6 +53,9 @@ class YaraLanguageServer(server.LanguageServer):
         self._route("textDocument/hover", self.provide_hover)
         self._route("textDocument/references", self.provide_reference)
         self._route("textDocument/rename", self.provide_rename)
+        self.event_handlers = {}
+        self._route("textDocument/didClose", self.event_did_close, notification=True)
+        self._route("textDocument/didSave", self.event_did_save, notification=True)
         self.workspace = False
 
     def _get_document(self, file_uri: str, dirty_files: dict) -> str:
@@ -128,16 +129,18 @@ class YaraLanguageServer(server.LanguageServer):
                     else:
                         if method in self.event_handlers:
                             # TODO: Only send writer to event handlers that want it OR rewrite handlers to not use writer
-                            await self.event_handlers[method](message, has_started, config=config, dirty_files=dirty_files, writer=writer)
-                        if method == "initialized":
+                            await self.event_handlers[method](has_started, message=message, config=config, dirty_files=dirty_files, writer=writer)
+                        elif not has_started and method == "initialized":
+                            # special type of event that just confirms response to 'initialize' request
+                            # ... local variable has_started needs to be modified in this function's context,
+                            # ... so it's easier to handle here instead of spinning it off to its own handler
                             self._logger.info("Client has been successfully initialized")
                             has_started = True
                             params = {"type": lsp.MessageType.INFO, "message": "Successfully connected"}
                             await self.send_notification("window/showMessageRequest", params, writer)
-                        elif has_started and method == "exit":
-                            # first remove the client associated with this handler
-                            await self.remove_client(writer)
-                            raise ce.ServerExit("Server exiting process per client request")
+                        # else:
+                        #     # TODO: Figure out what else needs to be done when an unknown event is encountered
+                        #     self._logger.warning("Encountered an unknown notification type '%s'. Ignoring.", method)
                         elif has_started and method == "workspace/didChangeConfiguration":
                             config = message.get("params", {}).get("settings", {}).get("yara", {})
                             self._logger.debug("Changed workspace config to %s", json.dumps(config))
@@ -150,12 +153,6 @@ class YaraLanguageServer(server.LanguageServer):
                                     change = changes.get("text", None)
                                     if change:
                                         dirty_files[file_uri] = change
-                        elif has_started and method == "textDocument/didClose":
-                            file_uri = message.get("params", {}).get("textDocument", {}).get("uri", "")
-                            # file is no longer dirty after closing
-                            if file_uri in dirty_files:
-                                del dirty_files[file_uri]
-                                self._logger.debug("Removed %s from dirty files list", file_uri)
             except ce.NoYaraPython as warn:
                 self._logger.warning(warn)
                 params = {
@@ -224,13 +221,27 @@ class YaraLanguageServer(server.LanguageServer):
                 server_options["textDocumentSync"] = lsp.TextSyncKind.FULL
             return {"capabilities": server_options}
 
+    # @_route("textDocument/didClose", notification=True)
+    async def event_did_close(self, has_started: bool, **kwargs):
+        ''' If file was previously tracked as 'dirty', remove tracking. '''
+        message = kwargs.pop("message", {})
+        params = message.get("params", {})
+        file_uri = params.get("textDocument", {}).get("uri", "")
+        if has_started:
+            dirty_files = kwargs.pop("dirty_files", {})
+            # file is no longer dirty after closing
+            if file_uri in dirty_files:
+                del dirty_files[file_uri]
+                self._logger.debug("Removed %s from dirty files list", file_uri)
+
     # @_route("textDocument/didSave", notification=True)
-    async def event_did_save(self, message: dict, has_started: bool, **kwargs):
+    async def event_did_save(self, has_started: bool, **kwargs):
         '''If file was previously tracked as 'dirty', remove tracking.
            If 'compile_on_save' is True, analyze saved document and publish diagnostics
         '''
+        message = kwargs.pop("message", {})
         params = message.get("params", {})
-        file_uri = message.get("params", {}).get("textDocument", {}).get("uri", "")
+        file_uri = params.get("textDocument", {}).get("uri", "")
         if has_started:
             config = kwargs.pop("config", {})
             dirty_files = kwargs.pop("dirty_files", {})
@@ -251,6 +262,15 @@ class YaraLanguageServer(server.LanguageServer):
                 "diagnostics": diagnostics
             }
             await self.send_notification("textDocument/publishDiagnostics", params, writer)
+
+    # @_route("exit", notification=True)
+    async def event_exit(self, has_started: bool, **kwargs):
+        ''' Remove client (StreamWriter) from the list of tracked clients and exit process '''
+        if has_started:
+            # first remove the client associated with this handler
+            writer = kwargs.pop("writer")
+            await self.remove_client(writer)
+            raise ce.ServerExit("Server exiting process per client request")
 
     # @_route("workspace/executeCommand")
     async def execute_command(self, message: dict, has_started: bool, **kwargs) -> dict:
