@@ -3,6 +3,7 @@ extension-pkg-whitelist=yara
 
 [MESSAGES CONTROL]
 disable=
+    broad-except,
     inconsistent-return-statements,
     line-too-long,
     too-many-arguments,
