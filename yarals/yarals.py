@@ -43,8 +43,9 @@ class YaraLanguageServer(server.LanguageServer):
         self.diagnostics_warned = False
         schema = Path(__file__).parent.joinpath("data", "modules.json").resolve()
         self.modules = json.loads(schema.read_text())
-        # set request routes for this instance
-        self.routes = {}
+        self.event_handlers = {}
+        self._route("textDocument/didSave", self.event_did_save, notification=True)
+        self.request_handlers = {}
         self._route("initialize", self.initialize)
         self._route("shutdown", self.shutdown)
         self._route("workspace/executeCommand", self.execute_command)
@@ -68,11 +69,20 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Return the version of the underlying YARA library, if available '''
         return yara.YARA_VERSION if HAS_YARA else ''
 
-    def _route(self, method, func):
-        ''' Route JSON-RPC requests to the appropriate method '''
-        method_object_name = func.__self__.__class__.__name__
-        logging.debug("Routing '%s' to '%s.%s()'", method, method_object_name, func.__name__)
-        self.routes[method] = func
+    def _route(self, request, method, notification=False):
+        '''Route JSON-RPC requests to the appropriate method
+
+        :request: string. Request type being sent by client
+        :method: function. Method to call when request is encountered
+        :notification: bool. Type of request being handled. If set to True,
+                            request type is a 'did' event, such as 'didChange', 'didSave', etc.
+        '''
+        method_object_name = method.__self__.__class__.__name__
+        logging.debug("Routing '%s' to '%s.%s()'", request, method_object_name, method.__name__)
+        if notification:
+            self.event_handlers[request] = method
+        else:
+            self.request_handlers[request] = method
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         '''React and respond to client messages
@@ -106,9 +116,9 @@ class YaraLanguageServer(server.LanguageServer):
                     if "id" in message:
                         # trying to generically handle JSON-RPC requests
                         # by sending the full request message to each method
-                        if method in self.routes:
+                        if method in self.request_handlers:
                             # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
-                            response = await self.routes[method](message, has_started, dirty_files=dirty_files, writer=writer)
+                            response = await self.request_handlers[method](message, has_started, dirty_files=dirty_files, writer=writer)
                             if response:
                                 await self.send_response(message["id"], response, writer)
                         else:
@@ -116,6 +126,9 @@ class YaraLanguageServer(server.LanguageServer):
                             self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
                     # if no id is present, this is a JSON-RPC notification
                     else:
+                        if method in self.event_handlers:
+                            # TODO: Only send writer to event handlers that want it OR rewrite handlers to not use writer
+                            await self.event_handlers[method](message, has_started, config=config, dirty_files=dirty_files, writer=writer)
                         if method == "initialized":
                             self._logger.info("Client has been successfully initialized")
                             has_started = True
@@ -143,24 +156,6 @@ class YaraLanguageServer(server.LanguageServer):
                             if file_uri in dirty_files:
                                 del dirty_files[file_uri]
                                 self._logger.debug("Removed %s from dirty files list", file_uri)
-                        elif has_started and method == "textDocument/didSave":
-                            file_uri = message.get("params", {}).get("textDocument", {}).get("uri", "")
-                            # file is no longer dirty after saving
-                            if file_uri in dirty_files:
-                                del dirty_files[file_uri]
-                                self._logger.debug("Removed %s from dirty files list", file_uri)
-                            if config.get("compile_on_save", False):
-                                file_path = helpers.parse_uri(file_uri)
-                                with open(file_path, "rb") as ifile:
-                                    document = ifile.read().decode(self._encoding)
-                                diagnostics = await self.provide_diagnostic(document)
-                            else:
-                                diagnostics = []
-                            params = {
-                                "uri": file_uri,
-                                "diagnostics": diagnostics
-                            }
-                            await self.send_notification("textDocument/publishDiagnostics", params, writer)
             except ce.NoYaraPython as warn:
                 self._logger.warning(warn)
                 params = {
@@ -228,6 +223,34 @@ class YaraLanguageServer(server.LanguageServer):
                 # Documents are synced by always sending the full content of the document
                 server_options["textDocumentSync"] = lsp.TextSyncKind.FULL
             return {"capabilities": server_options}
+
+    # @_route("textDocument/didSave", notification=True)
+    async def event_did_save(self, message: dict, has_started: bool, **kwargs):
+        '''If file was previously tracked as 'dirty', remove tracking.
+           If 'compile_on_save' is True, analyze saved document and publish diagnostics
+        '''
+        params = message.get("params", {})
+        file_uri = message.get("params", {}).get("textDocument", {}).get("uri", "")
+        if has_started:
+            config = kwargs.pop("config", {})
+            dirty_files = kwargs.pop("dirty_files", {})
+            writer = kwargs.pop("writer")
+            # file is no longer dirty after saving
+            if file_uri in dirty_files:
+                del dirty_files[file_uri]
+                self._logger.debug("Removed %s from dirty files list", file_uri)
+            if config.get("compile_on_save", False):
+                file_path = helpers.parse_uri(file_uri)
+                with open(file_path, "rb") as ifile:
+                    document = ifile.read().decode(self._encoding)
+                diagnostics = await self.provide_diagnostic(document)
+            else:
+                diagnostics = []
+            params = {
+                "uri": file_uri,
+                "diagnostics": diagnostics
+            }
+            await self.send_notification("textDocument/publishDiagnostics", params, writer)
 
     # @_route("workspace/executeCommand")
     async def execute_command(self, message: dict, has_started: bool, **kwargs) -> dict:
