@@ -68,10 +68,6 @@ class YaraLanguageServer(server.LanguageServer):
         with open(file_path, "r") as rule_file:
             return rule_file.read()
 
-    def _get_yara_version(self) -> str:
-        ''' Return the version of the underlying YARA library, if available '''
-        return yara.YARA_VERSION if HAS_YARA else ''
-
     def _route(self, request, method, notification=False):
         '''Route JSON-RPC requests to the appropriate method
 
@@ -175,6 +171,7 @@ class YaraLanguageServer(server.LanguageServer):
         :has_started: Boolean indicating whether this method has been called before
         :writer: StreamWriter to send messages back to the client
         '''
+        # pylint: disable=W0613
         if not has_started:
             rootdir = helpers.parse_uri(message["params"]["rootUri"], encoding=self._encoding)
             if rootdir:
@@ -500,6 +497,7 @@ class YaraLanguageServer(server.LanguageServer):
     # @_route("textDocument/highlight")
     async def provide_highlight(self, message: dict, has_started: bool, **kwargs) -> list:
         ''' Respond to the textDocument/documentHighlight request '''
+        # pylint: disable=W0613
         try:
             params = message.get("params", {})
             file_uri = params.get("textDocument", {}).get("uri", None)
