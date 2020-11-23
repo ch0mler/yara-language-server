@@ -9,6 +9,9 @@ class DefinitionError(Exception):
 class DiagnosticError(Exception):
     ''' Custom error for diagnostics feature '''
 
+class FormatError(Exception):
+    ''' Custom error for formatting feature '''
+
 class HighlightError(Exception):
     ''' Custom error for highlight feature '''
 

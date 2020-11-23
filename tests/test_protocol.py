@@ -201,6 +201,7 @@ def test_responseerror_convert_exception():
     assert json.dumps(res_err.convert_exception((ce.CodeCompletionError(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
     assert json.dumps(res_err.convert_exception((ce.DefinitionError(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
     assert json.dumps(res_err.convert_exception((ce.DiagnosticError(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
+    assert json.dumps(res_err.convert_exception((ce.FormatError(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
     assert json.dumps(res_err.convert_exception((ce.HighlightError(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
     assert json.dumps(res_err.convert_exception((ce.HoverError(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
     assert json.dumps(res_err.convert_exception((ce.NoYaraPython(msg))), cls=encoder) == json.dumps(res_err(errors.INTERNAL_ERROR, msg), cls=encoder)
