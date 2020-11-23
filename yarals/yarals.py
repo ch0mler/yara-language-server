@@ -17,6 +17,7 @@ try:
     import yara
     HAS_YARA = True
 except ModuleNotFoundError:
+    # TODO: Move this check into server, and ask user if they would like to install this on first run
     HAS_YARA = False
     # cannot notify user at this point unfortunately - no clients have connected
     logging.warning("yara-python is not installed. Diagnostics and Compile commands are disabled")
@@ -25,12 +26,13 @@ try:
     import plyara
     HAS_PLYARA = True
 except ModuleNotFoundError:
+    # TODO: Move this check into server, and ask user if they would like to install this on first run
     HAS_PLYARA = False
     # cannot notify user at this point unfortunately - no clients have connected
     logging.warning("plyara is not installed. Formatting disabled")
 
-
 SCHEMA = Path(__file__).parent.joinpath("data", "modules.json").resolve()
+
 
 class YaraLanguageServer(server.LanguageServer):
     ''' Implements the language server for YARA '''
@@ -51,6 +53,7 @@ class YaraLanguageServer(server.LanguageServer):
         self._route("workspace/executeCommand", self.execute_command)
         self._route("textDocument/completion", self.provide_code_completion)
         self._route("textDocument/definition", self.provide_definition)
+        self._route("textDocument/formatting", self.provide_formatting)
         self._route("textDocument/documentHighlight", self.provide_highlight)
         self._route("textDocument/hover", self.provide_hover)
         self._route("textDocument/references", self.provide_reference)
@@ -494,6 +497,28 @@ class YaraLanguageServer(server.LanguageServer):
         except Exception as err:
             self._logger.error(err)
             raise ce.DiagnosticError("Could not compile rule: {}".format(err))
+
+    # @_route("textDocument/formatting")
+    async def provide_formatting(self, message: dict, has_started: bool, **kwargs) -> list:
+        '''Respond to the textDocument/formatting request
+
+        Returns a (possibly empty) list of text edits for the client to make
+        '''
+        try:
+            params = message.get("params", {})
+            file_uri = params.get("textDocument", {}).get("uri", None)
+            if has_started and file_uri:
+                results = []
+                options = params.get("options", {})
+                dirty_files = kwargs.pop("dirty_files", {})
+                document = self._get_document(file_uri, dirty_files)
+                self._logger.debug("Received formatting request for '%s' with options '%s'", file_uri, options)
+                return results
+        except plyara.exceptions.ParseTypeError as err:
+            self._logger.warning("Could not format {} due to parsing error: {}".format(file_uri, err))
+        except Exception as err:
+            self._logger.error(err)
+            raise ce.FormatError("Could not format document: {}".format(file_uri))
 
     # @_route("textDocument/highlight")
     async def provide_highlight(self, message: dict, has_started: bool, **kwargs) -> list:

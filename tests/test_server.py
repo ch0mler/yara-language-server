@@ -489,6 +489,39 @@ async def test_exit(caplog, initialize_msg, initialized_msg, open_streams, shutd
     writer.close()
     await writer.wait_closed()
 
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_no_results(test_rules, yara_server):
+    ''' Ensure a text edit is provided on format '''
+    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yara").resolve())
+    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 0
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format(test_rules, yara_server):
+    ''' Ensure a text edit is provided on format '''
+    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yara").resolve())
+    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
 @pytest.mark.skip(reason="not implemented")
 @pytest.mark.server
 def test_highlights():
@@ -560,7 +593,6 @@ async def test_no_hover(test_rules, yara_server):
         }
     }
     result = await yara_server.provide_hover(message, True)
-    print(result)
     assert result is None
 
 @pytest.mark.asyncio
