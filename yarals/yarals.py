@@ -41,6 +41,7 @@ class YaraLanguageServer(server.LanguageServer):
         super().__init__()
         self._logger = logging.getLogger("yara")
         self.diagnostics_warned = False
+        self.workspace = False
         schema = Path(__file__).parent.joinpath("data", "modules.json").resolve()
         self.modules = json.loads(schema.read_text())
         self.request_handlers = {}
@@ -54,9 +55,10 @@ class YaraLanguageServer(server.LanguageServer):
         self._route("textDocument/references", self.provide_reference)
         self._route("textDocument/rename", self.provide_rename)
         self.event_handlers = {}
+        self._route("textDocument/didChange", self.event_did_change, notification=True)
         self._route("textDocument/didClose", self.event_did_close, notification=True)
         self._route("textDocument/didSave", self.event_did_save, notification=True)
-        self.workspace = False
+        self._route("exit", self.event_exit, notification=True)
 
     def _get_document(self, file_uri: str, dirty_files: dict) -> str:
         ''' Return the document text for a given file URI either from disk or memory '''
@@ -131,6 +133,7 @@ class YaraLanguageServer(server.LanguageServer):
                             # TODO: Only send writer to event handlers that want it OR rewrite handlers to not use writer
                             await self.event_handlers[method](has_started, message=message, config=config, dirty_files=dirty_files, writer=writer)
                         elif not has_started and method == "initialized":
+                            # TODO: Track each client has_started alongside client (StreamWriter) object
                             # special type of event that just confirms response to 'initialize' request
                             # ... local variable has_started needs to be modified in this function's context,
                             # ... so it's easier to handle here instead of spinning it off to its own handler
@@ -138,21 +141,16 @@ class YaraLanguageServer(server.LanguageServer):
                             has_started = True
                             params = {"type": lsp.MessageType.INFO, "message": "Successfully connected"}
                             await self.send_notification("window/showMessageRequest", params, writer)
-                        # else:
-                        #     # TODO: Figure out what else needs to be done when an unknown event is encountered
-                        #     self._logger.warning("Encountered an unknown notification type '%s'. Ignoring.", method)
                         elif has_started and method == "workspace/didChangeConfiguration":
+                            # TODO: Track each client config alongside client (StreamWriter) object
+                            # special type of event that modifies the client's tracked configuration
+                            # ... local variable config needs to be modified in this function's context,
+                            # ... so it's easier to handle here instead of spinning it off to its own handler
                             config = message.get("params", {}).get("settings", {}).get("yara", {})
                             self._logger.debug("Changed workspace config to %s", json.dumps(config))
-                        elif has_started and method == "textDocument/didChange":
-                            file_uri = message.get("params", {}).get("textDocument", {}).get("uri", None)
-                            if file_uri:
-                                self._logger.debug("Adding %s to dirty files list", file_uri)
-                                for changes in message.get("params", {}).get("contentChanges", []):
-                                    # full text is submitted with each change
-                                    change = changes.get("text", None)
-                                    if change:
-                                        dirty_files[file_uri] = change
+                        else:
+                            # TODO: Figure out what else needs to be done when an unknown event is encountered
+                            self._logger.warning("Encountered an unknown notification type '%s'. Ignoring.", method)
             except ce.NoYaraPython as warn:
                 self._logger.warning(warn)
                 params = {
@@ -221,13 +219,30 @@ class YaraLanguageServer(server.LanguageServer):
                 server_options["textDocumentSync"] = lsp.TextSyncKind.FULL
             return {"capabilities": server_options}
 
+    # @_route("textDocument/didChange", notification=True)
+    async def event_did_change(self, has_started: bool, **kwargs):
+        '''If file has new unsaved changes, start tracking it as dirty,
+           so other commands will continue to work with appropriate text locations
+        '''
+        message = kwargs.pop("message", {})
+        params = message.get("params", {})
+        file_uri = params.get("textDocument", {}).get("uri", None)
+        if has_started and file_uri:
+            self._logger.debug("Adding %s to dirty files list", file_uri)
+            dirty_files = kwargs.pop("dirty_files", {})
+            for changes in params.get("contentChanges", []):
+                # full text is submitted with each change
+                change = changes.get("text", None)
+                if change:
+                    dirty_files[file_uri] = change
+
     # @_route("textDocument/didClose", notification=True)
     async def event_did_close(self, has_started: bool, **kwargs):
         ''' If file was previously tracked as 'dirty', remove tracking. '''
         message = kwargs.pop("message", {})
         params = message.get("params", {})
         file_uri = params.get("textDocument", {}).get("uri", "")
-        if has_started:
+        if has_started and file_uri:
             dirty_files = kwargs.pop("dirty_files", {})
             # file is no longer dirty after closing
             if file_uri in dirty_files:
@@ -242,7 +257,7 @@ class YaraLanguageServer(server.LanguageServer):
         message = kwargs.pop("message", {})
         params = message.get("params", {})
         file_uri = params.get("textDocument", {}).get("uri", "")
-        if has_started:
+        if has_started and file_uri:
             config = kwargs.pop("config", {})
             dirty_files = kwargs.pop("dirty_files", {})
             writer = kwargs.pop("writer")
