@@ -22,7 +22,6 @@ setup(
     description=DESCRIPTION.split("\n")[0],
     download_url="https://github.com/ch0mler/yara-language-server",
     entry_points=entry_points,
-    install_requires=["yara-python"],
     long_description=DESCRIPTION,
     long_description_content_type="text/plain",
     name="yara-language-server",
