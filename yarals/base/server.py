@@ -32,7 +32,10 @@ class LanguageServer():
             if future:
                 future.result()
         except (ce.ServerExit, KeyboardInterrupt) as err:
-            self._logger.error(err)
+            # if one of these two exceptions are encountered
+            # then this was an intentional action
+            # and it should be reported as informational, not an error
+            self._logger.info(err)
             # drop all clients
             self.num_clients = 0
             # ... and cancel all running tasks

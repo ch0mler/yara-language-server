@@ -492,7 +492,7 @@ async def test_exit(caplog, initialize_msg, initialized_msg, open_streams, shutd
             await yara_server.write_data(exit_msg, writer)
             await yara_server.read_request(reader)
             assert ("yara", logging.INFO, "Disconnected client") in caplog.record_tuples
-            assert ("yara", logging.ERROR, "Server exiting process per client request") in caplog.record_tuples
+            assert ("yara", logging.INFO, "Server exiting process per client request") in caplog.record_tuples
     writer.close()
     await writer.wait_closed()
 
