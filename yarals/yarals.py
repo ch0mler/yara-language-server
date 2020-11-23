@@ -46,6 +46,7 @@ class YaraLanguageServer(server.LanguageServer):
         # set request routes for this instance
         self.routes = {}
         self._route("initialize", self.initialize)
+        self._route("shutdown", self.shutdown)
         self._route("workspace/executeCommand", self.execute_command)
         self._route("textDocument/completion", self.provide_code_completion)
         self._route("textDocument/definition", self.provide_definition)
@@ -110,14 +111,9 @@ class YaraLanguageServer(server.LanguageServer):
                             response = await self.routes[method](message, has_started, dirty_files=dirty_files, writer=writer)
                             if response:
                                 await self.send_response(message["id"], response, writer)
-                        elif has_started and method == "shutdown":
-                            self._logger.info("Client requested shutdown")
-                            await self.send_response(message["id"], {}, writer)
-                            # explicitly clear the dirty files on shutdown
-                            dirty_files.clear()
-                        # elif has_started and method == "textDocument/documentHighlight":
-                        #     highlights = await self.provide_highlight(message["params"])
-                        #     await self.send_response(message["id"], highlights, writer)
+                        else:
+                            # TODO: Figure out what else needs to be done when an unknown command is encountered
+                            self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
                     # if no id is present, this is a JSON-RPC notification
                     else:
                         if method == "initialized":
@@ -182,7 +178,6 @@ class YaraLanguageServer(server.LanguageServer):
                 await self.send_notification("window/showMessage", params, writer)
 
     # @_route("initialize")
-    # pylint: disable=W0613
     async def initialize(self, message: dict, has_started: bool, **kwargs) -> dict:
         '''Announce language support methods
 
@@ -247,10 +242,10 @@ class YaraLanguageServer(server.LanguageServer):
                 args = message.get("params", {}).get("arguments", [])
                 dirty_files = kwargs.pop("dirty_files", {})
                 if cmd == "yara.CompileRule":
-                    writer = kwargs.pop("writer", {})
+                    writer = kwargs.pop("writer")
                     self._logger.info("Compiling rule per user's request")
                 elif cmd == "yara.CompileAllRules":
-                    writer = kwargs.pop("writer", {})
+                    writer = kwargs.pop("writer")
                     for result in await self._compile_all_rules(dirty_files, self.workspace):
                         await self.send_notification("textDocument/publishDiagnostics", result, writer)
                     # done with diagnostics - nothing needs to be returned
@@ -445,7 +440,6 @@ class YaraLanguageServer(server.LanguageServer):
             raise ce.DiagnosticError("Could not compile rule: {}".format(err))
 
     # @_route("textDocument/highlight")
-    # pylint: disable=W0613
     async def provide_highlight(self, message: dict, has_started: bool, **kwargs) -> list:
         ''' Respond to the textDocument/documentHighlight request '''
         try:
@@ -586,3 +580,16 @@ class YaraLanguageServer(server.LanguageServer):
         except Exception as err:
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))
+
+    # @_route("shutdown")
+    async def shutdown(self, message: dict, has_started: bool, **kwargs):
+        '''Shut down the server, clear all unsaved, tracked files,
+        and notify client to begin exiting
+        '''
+        if has_started:
+            self._logger.info("Client requested shutdown")
+            dirty_files = kwargs.pop("dirty_files", {})
+            writer = kwargs.pop("writer")
+            await self.send_response(message["id"], {}, writer)
+            # explicitly clear the dirty files on shutdown
+            dirty_files.clear()
