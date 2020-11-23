@@ -30,11 +30,14 @@ except ModuleNotFoundError:
     logging.warning("plyara is not installed. Formatting disabled")
 
 
+SCHEMA = Path(__file__).parent.joinpath("data", "modules.json").resolve()
+
 class YaraLanguageServer(server.LanguageServer):
     ''' Implements the language server for YARA '''
     # variable symbols have a few possible first characters
     _varchar = ["$", "#", "@", "!"]
     hover_langs = [lsp.MarkupKind.Markdown, lsp.MarkupKind.Plaintext]
+    modules = json.loads(SCHEMA.read_text())
 
     def __init__(self):
         ''' Handle the particulars of the server's YARA implementation '''
@@ -42,8 +45,6 @@ class YaraLanguageServer(server.LanguageServer):
         self._logger = logging.getLogger("yara")
         self.diagnostics_warned = False
         self.workspace = False
-        schema = Path(__file__).parent.joinpath("data", "modules.json").resolve()
-        self.modules = json.loads(schema.read_text())
         self.request_handlers = {}
         self._route("initialize", self.initialize)
         self._route("shutdown", self.shutdown)
