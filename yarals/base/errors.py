@@ -18,8 +18,8 @@ class HighlightError(Exception):
 class HoverError(Exception):
     ''' Custom error for hover feature '''
 
-class NoYaraPython(Exception):
-    ''' Custom error for when the yara-python dependency was not found '''
+class NoDependencyFound(Exception):
+    ''' Custom error for when a dependency was not found '''
 
 class RenameError(Exception):
     ''' Custom error for symbol rename feature '''

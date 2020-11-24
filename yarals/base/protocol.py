@@ -282,7 +282,7 @@ class ResponseError():
         elif isinstance(exception, ce.ServerExit):
             code = JsonRPCError.SERVER_ERROR_END
         elif isinstance(exception, (RuntimeError, ce.CodeCompletionError, ce.DefinitionError, ce.DiagnosticError, ce.FormatError,
-                                    ce.HighlightError,ce.HoverError, ce.NoYaraPython, ce.RenameError, ce.SymbolReferenceError)):
+                                    ce.HighlightError,ce.HoverError, ce.NoDependencyFound, ce.RenameError, ce.SymbolReferenceError)):
             code = JsonRPCError.INTERNAL_ERROR
         return ResponseError(code=code, message=exception.args[0])
 
