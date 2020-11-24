@@ -55,7 +55,6 @@ class YaraLanguageServer(server.LanguageServer):
                 self._logger.debug("'%s' module already imported", module_name)
             else:
                 self._logger.debug("Importing '%s' module", module_name)
-                # pylint: disable=C0415
                 importlib.import_module(module_name)
             has_module = True
         except (ModuleNotFoundError, ImportError):
@@ -459,7 +458,10 @@ class YaraLanguageServer(server.LanguageServer):
         :document: Contents of YARA rule file
         '''
         try:
-            if HAS_YARA:
+            if self._is_module_installed("yara"):
+                # weird way to get around Python compiler that thinks yara is not installed
+                # TODO: FIgure out the right way to dynamically import and use this module
+                yara = sys.modules["yara"]
                 diagnostics = []
                 try:
                     yara.compile(source=document)
@@ -512,19 +514,24 @@ class YaraLanguageServer(server.LanguageServer):
         Returns a (possibly empty) list of text edits for the client to make
         '''
         try:
-            params = message.get("params", {})
-            file_uri = params.get("textDocument", {}).get("uri", None)
-            if has_started and file_uri:
-                results = []
-                options = params.get("options", {})
-                dirty_files = kwargs.pop("dirty_files", {})
-                document = self._get_document(file_uri, dirty_files)
-                self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
-                return results
-        except plyara.exceptions.ParseTypeError as err:
-            self._logger.warning("Could not format {} due to parsing error: {}".format(file_uri, err))
+            if self._is_module_installed("plyara"):
+                # weird way to get around Python compiler that thinks plyara is not installed
+                # TODO: FIgure out the right way to dynamically import and use this module
+                plyara = sys.modules["plyara"]
+                try:
+                    params = message.get("params", {})
+                    file_uri = params.get("textDocument", {}).get("uri", None)
+                    if has_started and file_uri:
+                        results = []
+                        options = params.get("options", {})
+                        dirty_files = kwargs.pop("dirty_files", {})
+                        document = self._get_document(file_uri, dirty_files)
+                        self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
+                        return results
+                except plyara.exceptions.ParseTypeError as err:
+                    self._logger.warning("Could not format {} due to parsing error: {}".format(file_uri, err))
         except Exception as err:
-            self._logger.error(err)
+            self._logger.exception(err)
             raise ce.FormatError("Could not format document: {}".format(file_uri))
 
     # @_route("textDocument/highlight")

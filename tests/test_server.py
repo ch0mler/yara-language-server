@@ -493,24 +493,9 @@ async def test_exit(caplog, initialize_msg, initialized_msg, open_streams, shutd
 
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format_no_results(test_rules, yara_server):
-    ''' Ensure a text edit is provided on format '''
-    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yara").resolve())
-    file_uri = helpers.create_file_uri(apt_alienspy_rat)
-    message = {
-        "params": {
-            "textDocument": {"uri": file_uri},
-            "position": {"line": 29, "character": 12}
-        }
-    }
-    result = await yara_server.provide_formatting(message, True)
-    assert len(result) == 0
-
-@pytest.mark.asyncio
-@pytest.mark.server
 async def test_format(test_rules, yara_server):
     ''' Ensure a text edit is provided on format '''
-    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yara").resolve())
+    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
     file_uri = helpers.create_file_uri(apt_alienspy_rat)
     message = {
         "params": {
@@ -523,6 +508,21 @@ async def test_format(test_rules, yara_server):
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
     assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_no_results(test_rules, yara_server):
+    ''' Ensure a text edit is provided on format '''
+    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
+    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 0
 
 @pytest.mark.skip(reason="not implemented")
 @pytest.mark.server
@@ -647,9 +647,7 @@ async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_s
         "params": {"type": 3, "message": "Successfully connected"}
     }
     try:
-        module_name = "plyara"
-        print("Uninstallating %s" % module_name)
-        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", module_name])
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "plyara"])
         reader, writer = open_streams
         await yara_server.write_data(initialize_msg, writer)
         response = await yara_server.read_request(reader)
@@ -660,8 +658,7 @@ async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_s
         writer.close()
         await writer.wait_closed()
     finally:
-        print("Reinstallating %s" % module_name)
-        subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "plyara"])
 
 @pytest.mark.asyncio
 @pytest.mark.server
@@ -682,9 +679,7 @@ async def test_initialize_without_yara(initialize_msg, initialized_msg, open_str
         "params": {"type": 3, "message": "Successfully connected"}
     }
     try:
-        module_name = "yara-python"
-        print("Uninstallating %s" % module_name)
-        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", module_name])
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "yara-python"])
         reader, writer = open_streams
         await yara_server.write_data(initialize_msg, writer)
         response = await yara_server.read_request(reader)
@@ -695,8 +690,7 @@ async def test_initialize_without_yara(initialize_msg, initialized_msg, open_str
         writer.close()
         await writer.wait_closed()
     finally:
-        print("Reinstallating %s" % module_name)
-        subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "yara-python"])
 
 @pytest.mark.asyncio
 @pytest.mark.server
