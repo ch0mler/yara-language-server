@@ -631,12 +631,16 @@ async def test_initialize(initialize_msg, initialized_msg, open_streams, yara_se
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_streams, yara_server):
-    ''' Ensure server responds with appropriate initialization handshake without plyara installed '''
+    '''Ensure server responds with appropriate initialization handshake without plyara installed
+
+        Note: The formatter command should always be enabled by the server,
+            but if plyara is not installed the user should get a notification about it
+    '''
     expected_initialize = {
         "jsonrpc": "2.0", "id": 0, "result":{
             "capabilities": {
                 "completionProvider":{"resolveProvider": False, "triggerCharacters": ["."]},
-                "definitionProvider": True, "documentFormattingProvider": False, "hoverProvider": True,
+                "definitionProvider": True, "documentFormattingProvider": True, "hoverProvider": True,
                 "renameProvider": True, "referencesProvider": True, "textDocumentSync": 1,
                 "executeCommandProvider": {"commands": ["yara.CompileRule", "yara.CompileAllRules"]}
             }

@@ -29,6 +29,7 @@ class YaraLanguageServer(server.LanguageServer):
         super().__init__()
         self._logger = logging.getLogger("yara")
         self.diagnostics_warned = False
+        self.formatter_warned = False
         self.workspace = False
         self.request_handlers = {}
         self._route("initialize", self.initialize)
@@ -148,7 +149,7 @@ class YaraLanguageServer(server.LanguageServer):
                         else:
                             # TODO: Figure out what else needs to be done when an unknown event is encountered
                             self._logger.warning("Encountered an unknown notification type '%s'. Ignoring.", method)
-            except ce.NoYaraPython as warn:
+            except ce.NoDependencyFound as warn:
                 self._logger.warning(warn)
                 params = {
                     "type": lsp.MessageType.WARNING,
@@ -211,12 +212,7 @@ class YaraLanguageServer(server.LanguageServer):
                     # TODO: Notify user and ask if they would like to install it
                     self._logger.warning("yara-python is not installed. Diagnostics and Compile commands are disabled")
             if doc_options.get("formatting", {}).get("dynamicRegistration", False):
-                if self._is_module_installed("plyara"):
-                    server_options["documentFormattingProvider"] = True
-                else:
-                    # TODO: Notify user and ask if they would like to install it
-                    self._logger.warning("plyara is not installed. Formatting disabled")
-                    server_options["documentFormattingProvider"] = False
+                server_options["documentFormattingProvider"] = True
             if doc_options.get("references", {}).get("dynamicRegistration", False):
                 server_options["referencesProvider"] = True
             if doc_options.get("rename", {}).get("dynamicRegistration", False):
@@ -458,11 +454,11 @@ class YaraLanguageServer(server.LanguageServer):
         :document: Contents of YARA rule file
         '''
         try:
+            diagnostics = []
             if self._is_module_installed("yara"):
                 # weird way to get around Python compiler that thinks yara is not installed
                 # TODO: FIgure out the right way to dynamically import and use this module
                 yara = sys.modules["yara"]
-                diagnostics = []
                 try:
                     yara.compile(source=document)
                 except yara.SyntaxError as error:
@@ -497,12 +493,12 @@ class YaraLanguageServer(server.LanguageServer):
                             message=msg
                         )
                     )
-                return diagnostics
             elif self.diagnostics_warned:
                 pass
             else:
                 self.diagnostics_warned = True
-                raise ce.NoYaraPython("yara-python is not installed. Diagnostics and Compile commands are disabled")
+                raise ce.NoDependencyFound("yara-python is not installed. Diagnostics and Compile commands are disabled")
+            return diagnostics
         except Exception as err:
             self._logger.error(err)
             raise ce.DiagnosticError("Could not compile rule: {}".format(err))
@@ -514,6 +510,7 @@ class YaraLanguageServer(server.LanguageServer):
         Returns a (possibly empty) list of text edits for the client to make
         '''
         try:
+            edits = []
             if self._is_module_installed("plyara"):
                 # weird way to get around Python compiler that thinks plyara is not installed
                 # TODO: FIgure out the right way to dynamically import and use this module
@@ -522,14 +519,18 @@ class YaraLanguageServer(server.LanguageServer):
                     params = message.get("params", {})
                     file_uri = params.get("textDocument", {}).get("uri", None)
                     if has_started and file_uri:
-                        results = []
                         options = params.get("options", {})
                         dirty_files = kwargs.pop("dirty_files", {})
                         document = self._get_document(file_uri, dirty_files)
                         self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
-                        return results
                 except plyara.exceptions.ParseTypeError as err:
-                    self._logger.warning("Could not format {} due to parsing error: {}".format(file_uri, err))
+                    self._logger.warning("Could not format %s due to parsing error: %s", file_uri, err)
+            elif self.formatter_warned:
+                pass
+            else:
+                self.formatter_warned = True
+                raise ce.NoDependencyFound("plyara is not installed. Diagnostics and Compile commands are disabled")
+            return edits
         except Exception as err:
             self._logger.exception(err)
             raise ce.FormatError("Could not format document: {}".format(file_uri))
