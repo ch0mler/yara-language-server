@@ -1,35 +1,18 @@
 ''' Implements the language server for YARA '''
 import asyncio
 from copy import deepcopy
-# from functools import wraps
+import importlib
 from itertools import chain
 import json
 import logging
 from pathlib import Path
 import re
+import sys
 
 from .base import protocol as lsp
 from .base import server
 from .base import errors as ce
 from . import helpers
-
-try:
-    import yara
-    HAS_YARA = True
-except ModuleNotFoundError:
-    # TODO: Move this check into server, and ask user if they would like to install this on first run
-    HAS_YARA = False
-    # cannot notify user at this point unfortunately - no clients have connected
-    logging.warning("yara-python is not installed. Diagnostics and Compile commands are disabled")
-
-try:
-    import plyara
-    HAS_PLYARA = True
-except ModuleNotFoundError:
-    # TODO: Move this check into server, and ask user if they would like to install this on first run
-    HAS_PLYARA = False
-    # cannot notify user at this point unfortunately - no clients have connected
-    logging.warning("plyara is not installed. Formatting disabled")
 
 SCHEMA = Path(__file__).parent.joinpath("data", "modules.json").resolve()
 
@@ -63,6 +46,21 @@ class YaraLanguageServer(server.LanguageServer):
         self._route("textDocument/didClose", self.event_did_close, notification=True)
         self._route("textDocument/didSave", self.event_did_save, notification=True)
         self._route("exit", self.event_exit, notification=True)
+
+    def _is_module_installed(self, module_name) -> bool:
+        ''' Check if the given module has been installed '''
+        has_module = False
+        try:
+            if module_name in sys.modules:
+                self._logger.debug("'%s' module already imported", module_name)
+            else:
+                self._logger.debug("Importing '%s' module", module_name)
+                # pylint: disable=C0415
+                importlib.import_module(module_name)
+            has_module = True
+        except (ModuleNotFoundError, ImportError):
+            has_module = False
+        return has_module
 
     def _get_document(self, file_uri: str, dirty_files: dict) -> str:
         ''' Return the document text for a given file URI either from disk or memory '''
@@ -206,11 +204,20 @@ class YaraLanguageServer(server.LanguageServer):
                 server_options["executeCommandProvider"] = {
                     "commands": []
                 }
-                if HAS_YARA:
+                has_yara = self._is_module_installed("yara")
+                if has_yara:
                     server_options["executeCommandProvider"]["commands"].append("yara.CompileRule")
                     server_options["executeCommandProvider"]["commands"].append("yara.CompileAllRules")
-            # if doc_options.get("formatting", {}).get("dynamicRegistration", False):
-            #     server_options["documentFormattingProvider"] = True
+                else:
+                    # TODO: Notify user and ask if they would like to install it
+                    self._logger.warning("yara-python is not installed. Diagnostics and Compile commands are disabled")
+            if doc_options.get("formatting", {}).get("dynamicRegistration", False):
+                if self._is_module_installed("plyara"):
+                    server_options["documentFormattingProvider"] = True
+                else:
+                    # TODO: Notify user and ask if they would like to install it
+                    self._logger.warning("plyara is not installed. Formatting disabled")
+                    server_options["documentFormattingProvider"] = False
             if doc_options.get("references", {}).get("dynamicRegistration", False):
                 server_options["referencesProvider"] = True
             if doc_options.get("rename", {}).get("dynamicRegistration", False):
@@ -512,7 +519,7 @@ class YaraLanguageServer(server.LanguageServer):
                 options = params.get("options", {})
                 dirty_files = kwargs.pop("dirty_files", {})
                 document = self._get_document(file_uri, dirty_files)
-                self._logger.debug("Received formatting request for '%s' with options '%s'", file_uri, options)
+                self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
                 return results
         except plyara.exceptions.ParseTypeError as err:
             self._logger.warning("Could not format {} due to parsing error: {}".format(file_uri, err))

@@ -1,6 +1,8 @@
 ''' Tests for yarals.yarals module '''
 import json
 import logging
+import subprocess
+import sys
 
 import pytest
 from yarals import helpers
@@ -603,8 +605,8 @@ async def test_initialize(initialize_msg, initialized_msg, open_streams, yara_se
         "jsonrpc": "2.0", "id": 0, "result":{
             "capabilities": {
                 "completionProvider":{"resolveProvider": False, "triggerCharacters": ["."]},
-                "definitionProvider": True, "hoverProvider": True, "renameProvider": True,
-                "referencesProvider": True, "textDocumentSync": 1,
+                "definitionProvider": True, "documentFormattingProvider": True, "hoverProvider": True,
+                "renameProvider": True, "referencesProvider": True, "textDocumentSync": 1,
                 "executeCommandProvider": {"commands": ["yara.CompileRule", "yara.CompileAllRules"]}
             }
         }
@@ -625,6 +627,85 @@ async def test_initialize(initialize_msg, initialized_msg, open_streams, yara_se
     assert response == expected_initialized
     writer.close()
     await writer.wait_closed()
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_streams, yara_server):
+    ''' Ensure server responds with appropriate initialization handshake without plyara installed '''
+    expected_initialize = {
+        "jsonrpc": "2.0", "id": 0, "result":{
+            "capabilities": {
+                "completionProvider":{"resolveProvider": False, "triggerCharacters": ["."]},
+                "definitionProvider": True, "documentFormattingProvider": False, "hoverProvider": True,
+                "renameProvider": True, "referencesProvider": True, "textDocumentSync": 1,
+                "executeCommandProvider": {"commands": ["yara.CompileRule", "yara.CompileAllRules"]}
+            }
+        }
+    }
+    expected_initialized = {
+        "jsonrpc": "2.0", "method": "window/showMessageRequest",
+        "params": {"type": 3, "message": "Successfully connected"}
+    }
+    try:
+        module_name = "plyara"
+        print("Uninstallating %s" % module_name)
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", module_name])
+        reader, writer = open_streams
+        await yara_server.write_data(initialize_msg, writer)
+        response = await yara_server.read_request(reader)
+        assert response == expected_initialize
+        await yara_server.write_data(initialized_msg, writer)
+        response = await yara_server.read_request(reader)
+        assert response == expected_initialized
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        print("Reinstallating %s" % module_name)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_initialize_without_yara(initialize_msg, initialized_msg, open_streams, yara_server):
+    ''' Ensure server responds with appropriate initialization handshake without yara-python installed '''
+    expected_initialize = {
+        "jsonrpc": "2.0", "id": 0, "result":{
+            "capabilities": {
+                "completionProvider":{"resolveProvider": False, "triggerCharacters": ["."]},
+                "definitionProvider": True, "documentFormattingProvider": True, "hoverProvider": True,
+                "renameProvider": True, "referencesProvider": True, "textDocumentSync": 1,
+                "executeCommandProvider": {"commands": []}
+            }
+        }
+    }
+    expected_initialized = {
+        "jsonrpc": "2.0", "method": "window/showMessageRequest",
+        "params": {"type": 3, "message": "Successfully connected"}
+    }
+    try:
+        module_name = "yara-python"
+        print("Uninstallating %s" % module_name)
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", module_name])
+        reader, writer = open_streams
+        await yara_server.write_data(initialize_msg, writer)
+        response = await yara_server.read_request(reader)
+        assert response == expected_initialize
+        await yara_server.write_data(initialized_msg, writer)
+        response = await yara_server.read_request(reader)
+        assert response == expected_initialized
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        print("Reinstallating %s" % module_name)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
+
+@pytest.mark.asyncio
+@pytest.mark.server
+def test__is_module_installed(yara_server):
+    ''' Ensure module detection is working '''
+    # tests should generally have these two installed as part of requirements.txt
+    assert yara_server._is_module_installed("yara") is True
+    assert yara_server._is_module_installed("plyara") is True
+    assert yara_server._is_module_installed("nonexistant") is False
 
 @pytest.mark.asyncio
 @pytest.mark.server
