@@ -35,6 +35,7 @@ jobs:
       run: |
         pip wheel .
         pip install $(ls *.whl)
+        pip install -r requirements.txt
         echo "YARALS_VERSION=$(pip show yarals | grep Version | cut -d ' ' -f2)" >> $GITHUB_ENV
     - name: Lint Package
       run: |
