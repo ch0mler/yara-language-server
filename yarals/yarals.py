@@ -510,6 +510,14 @@ class YaraLanguageServer(server.LanguageServer):
         Returns a (possibly empty) list of text edits for the client to make
         '''
         try:
+            # TODO: Set defaults in config
+            default_options = {
+                "tabSize": 4,                   # Size of a tab in spaces
+                "insertSpaces": True,           # Prefer spaces over tabs
+                "trimTrailingWhitespace": True, # Trim trailing whitespace on a line (>3.15.0)
+                "insertFinalNewline": False,    # Insert a newline character at the end of the file if one does not exist (>3.15.0)
+                "trimFinalNewlines": False      # Trim all newlines after the final newline at the end of the file (>3.15.0)
+            }
             edits = []
             if self._is_module_installed("plyara"):
                 # weird way to get around Python compiler that thinks plyara is not installed
@@ -519,7 +527,12 @@ class YaraLanguageServer(server.LanguageServer):
                     params = message.get("params", {})
                     file_uri = params.get("textDocument", {}).get("uri", None)
                     if has_started and file_uri:
-                        options = params.get("options", {})
+                        options = params.get("options", defaultOptions)
+                        tab_size = options.get("tabSize", defaultOptions["tabSize"])
+                        insert_spaces = options.get("insertSpaces", defaultOptions["insertSpaces"])
+                        trim_whitespaces = options.get("trimTrailingWhitespace", defaultOptions["trimTrailingWhitespace"])
+                        insert_newline = options.get("insertFinalNewline", defaultOptions["insertFinalNewline"])
+                        trim_newlines = options.get("trimFinalNewlines", defaultOptions["trimFinalNewlines"])
                         dirty_files = kwargs.pop("dirty_files", {})
                         document = self._get_document(file_uri, dirty_files)
                         self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])

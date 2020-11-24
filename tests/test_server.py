@@ -422,11 +422,18 @@ async def test_diagnostics(yara_server):
 
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_no_diagnostics(yara_server):
+async def test_diagnostics_no_results(yara_server):
     ''' Ensure no diagnostics are provided when rules are successfully compiled '''
     document = "rule NoDiagnostics { condition: true }"
     result = await yara_server.provide_diagnostic(document)
     assert result == []
+
+@pytest.mark.skip(reason="TODO: Implement logic")
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_diagnostics_notify_user():
+    ''' Ensure the diagnostics notify the user once, and only once, if yara-python is not installed '''
+    assert False
 
 @pytest.mark.asyncio
 @pytest.mark.server
@@ -523,6 +530,13 @@ async def test_format_no_results(test_rules, yara_server):
     }
     result = await yara_server.provide_formatting(message, True)
     assert len(result) == 0
+
+@pytest.mark.skip(reason="TODO: Implement logic")
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_notify_user():
+    ''' Ensure the formatter notifies the user once, and only once, if plyara is not installed '''
+    assert False
 
 @pytest.mark.skip(reason="not implemented")
 @pytest.mark.server
