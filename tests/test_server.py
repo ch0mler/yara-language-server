@@ -500,10 +500,29 @@ async def test_exit(caplog, initialize_msg, initialized_msg, open_streams, shutd
 
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format(test_rules, yara_server):
-    ''' Ensure a text edit is provided on format '''
-    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
-    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+async def test_format(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with explicit options '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": format_options
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_default_options(test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with implicit options '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
     message = {
         "params": {
             "textDocument": {"uri": file_uri},
@@ -518,10 +537,110 @@ async def test_format(test_rules, yara_server):
 
 @pytest.mark.asyncio
 @pytest.mark.server
+async def test_format_alt_tab_size(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format where tabSize has been altered '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    options = format_options.update({"tabSize": 2})
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": options
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_insert_tabs(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with tabs inserted instead of spaces '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    options = format_options.update({"insertSpaces": False})
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": options
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_no_trim_whitespace(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with whitespaces not trimmed '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    options = format_options.update({"trimTrailingWhitespace": False})
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": options
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_with_final_newline(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with a final newline inserted '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    options = format_options.update({"insertFinalNewline": True})
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": options
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_with_trimmed_newline(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with final newlines trimmed '''
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    options = format_options.update({"trimFinalNewlines": True})
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": options
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert False
+
+@pytest.mark.asyncio
+@pytest.mark.server
 async def test_format_no_results(test_rules, yara_server):
     ''' Ensure a text edit is provided on format '''
-    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
-    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
     message = {
         "params": {
             "textDocument": {"uri": file_uri},
@@ -534,8 +653,18 @@ async def test_format_no_results(test_rules, yara_server):
 @pytest.mark.skip(reason="TODO: Implement logic")
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format_notify_user():
+async def test_format_notify_user(caplog, test_rules, yara_server):
     ''' Ensure the formatter notifies the user once, and only once, if plyara is not installed '''
+    expected_msg = "plyara is not installed. Formatting is disabled"
+    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
+    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
     assert False
 
 @pytest.mark.skip(reason="not implemented")
