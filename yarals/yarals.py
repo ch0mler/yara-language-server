@@ -527,22 +527,28 @@ class YaraLanguageServer(server.LanguageServer):
                     params = message.get("params", {})
                     file_uri = params.get("textDocument", {}).get("uri", None)
                     if has_started and file_uri:
-                        options = params.get("options", defaultOptions)
-                        tab_size = options.get("tabSize", defaultOptions["tabSize"])
-                        insert_spaces = options.get("insertSpaces", defaultOptions["insertSpaces"])
-                        trim_whitespaces = options.get("trimTrailingWhitespace", defaultOptions["trimTrailingWhitespace"])
-                        insert_newline = options.get("insertFinalNewline", defaultOptions["insertFinalNewline"])
-                        trim_newlines = options.get("trimFinalNewlines", defaultOptions["trimFinalNewlines"])
+                        options = params.get("options", default_options)
+                        # extra check in case "options" key exists but is not a dictionary
+                        if not isinstance(options, dict):
+                            options = default_options
+                        tab_size = options.get("tabSize", default_options["tabSize"])
+                        insert_spaces = options.get("insertSpaces", default_options["insertSpaces"])
+                        trim_whitespaces = options.get("trimTrailingWhitespace", default_options["trimTrailingWhitespace"])
+                        insert_newline = options.get("insertFinalNewline", default_options["insertFinalNewline"])
+                        trim_newlines = options.get("trimFinalNewlines", default_options["trimFinalNewlines"])
                         dirty_files = kwargs.pop("dirty_files", {})
                         document = self._get_document(file_uri, dirty_files)
                         self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
+                        parser = plyara.Plyara()
+                        contents = parser.parse_string(document)
+                        self._logger.info(json.dumps(contents, indent=tab_size))
                 except plyara.exceptions.ParseTypeError as err:
                     self._logger.warning("Could not format %s due to parsing error: %s", file_uri, err)
             elif self.formatter_warned:
                 pass
             else:
                 self.formatter_warned = True
-                raise ce.NoDependencyFound("plyara is not installed. Diagnostics and Compile commands are disabled")
+                raise ce.NoDependencyFound("plyara is not installed. Formatting is disabled")
             return edits
         except Exception as err:
             self._logger.exception(err)
