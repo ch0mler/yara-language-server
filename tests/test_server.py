@@ -502,6 +502,13 @@ async def test_exit(caplog, initialize_msg, initialized_msg, open_streams, shutd
 @pytest.mark.server
 async def test_format(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format with explicit options '''
+    expected = """
+rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     message = {
@@ -515,12 +522,19 @@ async def test_format(format_options, test_rules, yara_server):
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_default_options(test_rules, yara_server):
     ''' Ensure a text edit is provided on format with implicit options '''
+    expected = """
+rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     message = {
@@ -533,12 +547,19 @@ async def test_format_default_options(test_rules, yara_server):
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_alt_tab_size(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format where tabSize has been altered '''
+    expected = """
+rule Oneline : test {
+  strings:
+    $a = "test"
+  condition:
+    $a
+}"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     options = format_options.update({"tabSize": 2})
@@ -553,12 +574,19 @@ async def test_format_alt_tab_size(format_options, test_rules, yara_server):
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_insert_tabs(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format with tabs inserted instead of spaces '''
+    expected = """
+rule Oneline : test {
+	strings:
+		$a = "test"
+	condition:
+		$a
+}"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     options = format_options.update({"insertSpaces": False})
@@ -573,12 +601,19 @@ async def test_format_insert_tabs(format_options, test_rules, yara_server):
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_no_trim_whitespace(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format with whitespaces not trimmed '''
+    expected = """
+rule Oneline : test { 
+    strings: 
+        $a = "test" 
+    condition: 
+        $a 
+}"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     options = format_options.update({"trimTrailingWhitespace": False})
@@ -593,12 +628,20 @@ async def test_format_no_trim_whitespace(format_options, test_rules, yara_server
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_with_final_newline(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format with a final newline inserted '''
+    expected = """
+rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}
+"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     options = format_options.update({"insertFinalNewline": True})
@@ -613,12 +656,19 @@ async def test_format_with_final_newline(format_options, test_rules, yara_server
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_with_trimmed_newline(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format with final newlines trimmed '''
+    expected = """
+rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}"""
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     options = format_options.update({"trimFinalNewlines": True})
@@ -633,7 +683,7 @@ async def test_format_with_trimmed_newline(format_options, test_rules, yara_serv
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
-    assert False
+    assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server

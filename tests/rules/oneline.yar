@@ -1,1 +1,1 @@
-rule Test { strings: $a="test" condition: $a }
+rule Oneline : test { strings: $a="test" condition: $a }
