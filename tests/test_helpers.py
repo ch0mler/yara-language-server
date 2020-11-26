@@ -5,6 +5,39 @@ import pytest
 from yarals import helpers
 from yarals.base import protocol
 
+# don't care about pylint(protected-access) warnings since these are just tests
+# pylint: disable=W0621
+
+
+@pytest.fixture(scope="module")
+def plyara_rule():
+    ''' YARA rule parsed by plyara '''
+    return {
+            "strings": [
+                {
+                    "name": "$a",
+                    "value": "test",
+                    "type": "text"
+                }
+            ],
+            "metadata": [
+                {
+                    "author": "test",
+                    "reference": "github.com",
+                }
+            ],
+            "rule_name": "Oneline",
+            "start_line": 1,
+            "stop_line": 1,
+            "raw_strings": "strings: $a=\"test\" ",
+            "raw_condition": "condition: $a ",
+            "condition_terms": [
+                "$a"
+            ],
+            "tags": [
+                "test"
+            ]
+        }
 
 @pytest.mark.helpers
 def test_create_file_uri(test_rules):
@@ -13,6 +46,147 @@ def test_create_file_uri(test_rules):
     expected = "file://{}".format(quote(test_rule_path.replace("\\", "/"), safe="/\\"))
     output = helpers.create_file_uri(test_rule_path)
     assert output == expected
+
+@pytest.mark.helpers
+def test_format_rule(plyara_rule, format_options):
+    ''' Ensure plyara rules are formatted appropriately '''
+    expected = """rule Oneline : test {
+    meta:
+        author = "test"
+        reference = "github.com"
+    strings:
+        $a = "test"
+    condition:
+        $a
+}"""
+    kwargs = {
+        "tab_size": format_options["tabSize"],
+        "insert_spaces": format_options["insertSpaces"],
+        "trim_whitespaces": format_options["trimTrailingWhitespace"],
+        "insert_newline": format_options["insertFinalNewline"],
+        "trim_newlines": format_options["trimFinalNewlines"],
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
+
+@pytest.mark.helpers
+def test_format_alt_tab_size(plyara_rule, format_options):
+    ''' Ensure a rule is formatted appropriately with a non-default tabSize '''
+    expected = """rule Oneline : test {
+  strings:
+    $a = "test"
+  condition:
+    $a
+}"""
+    kwargs = {
+        "tab_size": 2,
+        "insert_spaces": format_options["insertSpaces"],
+        "trim_whitespaces": format_options["trimTrailingWhitespace"],
+        "insert_newline": format_options["insertFinalNewline"],
+        "trim_newlines": format_options["trimFinalNewlines"],
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
+
+@pytest.mark.helpers
+def test_format_insert_tabs(plyara_rule, format_options):
+    ''' Ensure a rule is formatted appropriately with tabs instead of spaces '''
+    expected = """rule Oneline : test {
+	strings:
+		$a = "test"
+	condition:
+		$a
+}"""
+    kwargs = {
+        "tab_size": format_options["tabSize"],
+        "insert_spaces": False,
+        "trim_whitespaces": format_options["trimTrailingWhitespace"],
+        "insert_newline": format_options["insertFinalNewline"],
+        "trim_newlines": format_options["trimFinalNewlines"],
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
+
+@pytest.mark.helpers
+def test_format_no_trim_whitespace(plyara_rule, format_options):
+    ''' Ensure a rule is formatted appropriately with whitespace left on each line '''
+    expected = """rule Oneline : test { 
+    strings: 
+        $a = "test" 
+    condition: 
+        $a 
+}"""
+    kwargs = {
+        "tab_size": format_options["tabSize"],
+        "insert_spaces": format_options["insertSpaces"],
+        "trim_whitespaces": False,
+        "insert_newline": format_options["insertFinalNewline"],
+        "trim_newlines": format_options["trimFinalNewlines"],
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
+
+@pytest.mark.helpers
+def test_format_with_final_newline(plyara_rule, format_options):
+    ''' Ensure a rule is formatted appropriately with a newline appended '''
+    expected = """rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}
+"""
+    kwargs = {
+        "tab_size": format_options["tabSize"],
+        "insert_spaces": format_options["insertSpaces"],
+        "trim_whitespaces": format_options["trimTrailingWhitespace"],
+        "insert_newline": True,
+        "trim_newlines": format_options["trimFinalNewlines"],
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
+
+@pytest.mark.helpers
+def test_format_with_trimmed_newline(plyara_rule, format_options):
+    ''' Ensure a rule is formatted appropriately with all extra newlines trimmed '''
+    expected = """rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}
+
+
+"""
+    kwargs = {
+        "tab_size": format_options["tabSize"],
+        "insert_spaces": format_options["insertSpaces"],
+        "trim_whitespaces": format_options["trimTrailingWhitespace"],
+        "insert_newline": format_options["insertFinalNewline"],
+        "trim_newlines": True,
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
+
+@pytest.mark.helpers
+def test_format_with_both_newline_options(plyara_rule, format_options):
+    ''' Ensure a rule is formatted appropriately with all extra newlines trimmed and a final newline '''
+    expected = """rule Oneline : test {
+    strings:
+        $a = "test"
+    condition:
+        $a
+}
+"""
+    kwargs = {
+        "tab_size": format_options["tabSize"],
+        "insert_spaces": format_options["insertSpaces"],
+        "trim_whitespaces": format_options["trimTrailingWhitespace"],
+        "insert_newline": True,
+        "trim_newlines": True,
+    }
+    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
+    assert formatted_text == expected
 
 @pytest.mark.helpers
 def test_get_first_non_whitespace_index():

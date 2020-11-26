@@ -15,6 +15,56 @@ def create_file_uri(path: str):
     # if this is a windows path, the slashes need to be reversed
     return "file://{}".format(quote(str(path).replace("\\", "/"), safe="/\\"))
 
+def format_rule(rule: dict, tab_size: int, insert_spaces: bool,
+                trim_whitespaces: bool, insert_newline: bool, trim_newlines: bool) -> str:
+    '''Format parsed YARA rule(s)
+
+    :rule: Parsed rules according to plyara
+    :tab_size: Size of a tab in spaces
+    :insert_spaces: Prefer spaces over tabs
+    :trim_whitespaces: Trim trailing whitespace on a line
+    :insert_newline: Insert a newline character at the end of the file if one does not exist
+    :trim_newlines: Trim all newlines after the final newline at the end of the file
+
+    Returns a formatted YARA rule as a string
+    '''
+    # configure spacing
+    spacing = " "*tab_size if insert_spaces else "\t"
+    # start with an ordered list to make string appends easier, then join with a newline later
+    formatted = []
+    # 1. add formatted rule name + tags
+    formatted.append("rule {} : {} {{".format(rule["rule_name"], " ".join(rule["tags"])))
+    # 2. add meta section
+    if "metadata" in rule:
+        formatted.append("{}meta:".format(spacing))
+        for entry in rule["metadata"]:
+            for key, value in entry.items():
+                formatted.append("{}{} = \"{}\"".format(spacing*2, key, value))
+    # 3. add strings section
+    if "strings" in rule:
+        formatted.append("{}strings:".format(spacing))
+        for entry in rule["strings"]:
+            line = "{}".format(spacing*2)
+            if entry["type"] == "text":
+                line += "{} = \"{}\"".format(entry["name"], entry["value"])
+            else:
+                line += "{} = {}".format(entry["name"], entry["value"])
+            formatted.append(line)
+    # 4. add conditions section (required)
+    formatted.append("{}condition:".format(spacing))
+    # use a count to make sure we know when the last entry is
+    num_conditions = len(rule["condition_terms"])
+    for i in range(0, num_conditions):
+        condition = rule["condition_terms"][i]
+        # TODO: Carry condition terms over too
+        term = condition if i == (num_conditions-1) else "{} and ".format(condition)
+        formatted.append("{}{}".format(spacing*2, term))
+    # 5. add end bracket and newline(s) if specified
+    formatted.append("}")
+    if insert_newline:
+        formatted.append("")
+    return "\n".join(formatted)
+
 def get_first_non_whitespace_index(line: str) -> int:
     '''Get the first non-whitespace character index in a given line
 

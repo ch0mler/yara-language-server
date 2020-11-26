@@ -508,14 +508,6 @@ class YaraLanguageServer(server.LanguageServer):
 
         Returns a (possibly empty) list of text edits for the client to make
         '''
-        # TODO: Set defaults in config
-        default_options = {
-            "tabSize": 4,                   # Size of a tab in spaces
-            "insertSpaces": True,           # Prefer spaces over tabs
-            "trimTrailingWhitespace": True, # Trim trailing whitespace on a line (>3.15.0)
-            "insertFinalNewline": False,    # Insert a newline character at the end of the file if one does not exist (>3.15.0)
-            "trimFinalNewlines": False      # Trim all newlines after the final newline at the end of the file (>3.15.0)
-        }
         edits = []
         if self._is_module_installed("plyara"):
             try:
@@ -524,68 +516,35 @@ class YaraLanguageServer(server.LanguageServer):
                 plyara = sys.modules["plyara"]
                 params = message.get("params", {})
                 file_uri = params.get("textDocument", {}).get("uri", None)
-                self._logger.info(file_uri)
                 if has_started and file_uri:
                     dirty_files = kwargs.pop("dirty_files", {})
                     document = self._get_document(file_uri, dirty_files)
                     # parse options
-                    options = params.get("options", default_options)
+                    options = params.get("options", {})
                     # extra check in case "options" key exists but is not a dictionary
                     if not isinstance(options, dict):
-                        options = default_options
-                    tab_size = options.get("tabSize", default_options["tabSize"])
-                    insert_spaces = options.get("insertSpaces", default_options["insertSpaces"])
-                    trim_whitespaces = options.get("trimTrailingWhitespace", default_options["trimTrailingWhitespace"])
-                    insert_newline = options.get("insertFinalNewline", default_options["insertFinalNewline"])
-                    trim_newlines = options.get("trimFinalNewlines", default_options["trimFinalNewlines"])
-                    # configure spacing
-                    spacing = " "*tab_size if insert_spaces else "\t"
+                        options = {}
+                    tab_size = options.get("tabSize", 4)
+                    insert_spaces = options.get("insertSpaces", True)
+                    trim_whitespaces = options.get("trimTrailingWhitespace", True)
+                    insert_newline = options.get("insertFinalNewline", False)
+                    trim_newlines = options.get("trimFinalNewlines", True)
                     parser = plyara.Plyara()
                     contents = parser.parse_string(document)
-                    self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
-                    # start with an ordered list to make string appends easier, then join with a newline later
-                    new_text = []
                     self._logger.info(json.dumps(contents, indent=tab_size))
                     # plyara parses out each rule individually from the document
                     for rule in contents:
-                        # 1. add formatted rule name + tags
-                        new_text.append("rule {} : {} {{".format(rule["rule_name"], " ".join(rule["tags"])))
-                        # 2. add meta section
-                        if "metadata" in rule:
-                            new_text.append("{}meta:".format(spacing))
-                            for entry in rule["metadata"]:
-                                for key, value in entry.items():
-                                    new_text.append("{}{} = \"{}\"".format(spacing*2, key, value))
-                        # 3. add strings section
-                        if "strings" in rule:
-                            new_text.append("{}strings:".format(spacing))
-                            for entry in rule["strings"]:
-                                line = "{}".format(spacing*2)
-                                if entry["type"] == "text":
-                                    line += "{} = \"{}\"".format(entry["name"], entry["value"])
-                                else:
-                                    line += "{} = {}".format(entry["name"], entry["value"])
-                                new_text.append(line)
-                        # 4. add conditions section (required)
-                        new_text.append("{}condition:".format(spacing))
-                        # use a count to make sure we know when the last entry is
-                        num_conditions = len(rule["condition_terms"])
-                        for i in range(0, num_conditions):
-                            condition = rule["condition_terms"][i]
-                            # TODO: Carry condition terms over too
-                            term = condition if i == (num_conditions-1) else "{} and ".format(condition)
-                            new_text.append("{}{}".format(spacing*2, term))
-                        # 5. add newline(s) if specified
-                        if insert_newline:
-                            new_text.append("\n")
-                        # always format the whole document
-                        # TODO: Support formatting a selection
+                        self._logger.debug("Received formatting request for '%s'", rule["rule_name"])
+                        formatted_text = helpers.format_rule(rule, tab_size, insert_spaces, trim_whitespaces, insert_newline, trim_newlines)
                         document_range = lsp.Range(
-                            start=lsp.Position(line=0, char=0),
-                            end=lsp.Position(line=len(document.split("\n")), char=self.MAX_LINE)
+                            start=lsp.Position(line=rule["start_line"], char=0),
+                            end=lsp.Position(line=rule["stop_line"], char=self.MAX_LINE)
                         )
-                        edits.append(lsp.TextEdit(document_range, new_text))
-                    self._logger.info("\n".join(new_text))
+                        print("formatted: %r" % formatted_text)
+                        if not insert_newline:
+                            self._logger.debug("Stripping final newline from formatted text")
+                            formatted_text = formatted_text.rstrip("\n")
+                        edits.append(lsp.TextEdit(document_range, formatted_text))
             except plyara.exceptions.ParseTypeError as err:
                 writer = kwargs.pop("writer")
                 msg = "Could not format {} due to parsing error: {}".format(file_uri, err)
