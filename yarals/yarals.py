@@ -453,55 +453,54 @@ class YaraLanguageServer(server.LanguageServer):
 
         :document: Contents of YARA rule file
         '''
-        try:
-            diagnostics = []
-            if self._is_module_installed("yara"):
-                # weird way to get around Python compiler that thinks yara is not installed
-                # TODO: FIgure out the right way to dynamically import and use this module
-                yara = sys.modules["yara"]
-                try:
-                    yara.compile(source=document)
-                except yara.SyntaxError as error:
-                    line_no, msg = helpers.parse_result(str(error))
-                    # VSCode is zero-indexed
-                    line_no -= 1
-                    first_char = helpers.get_first_non_whitespace_index(document.split("\n")[line_no])
-                    symbol_range = lsp.Range(
-                        start=lsp.Position(line_no, first_char),
-                        end=lsp.Position(line_no, self.MAX_LINE)
+        diagnostics = []
+        if self._is_module_installed("yara"):
+            # weird way to get around Python compiler that thinks yara is not installed
+            # TODO: FIgure out the right way to dynamically import and use this module
+            yara = sys.modules["yara"]
+            try:
+                yara.compile(source=document)
+            except yara.SyntaxError as error:
+                line_no, msg = helpers.parse_result(str(error))
+                # VSCode is zero-indexed
+                line_no -= 1
+                first_char = helpers.get_first_non_whitespace_index(document.split("\n")[line_no])
+                symbol_range = lsp.Range(
+                    start=lsp.Position(line_no, first_char),
+                    end=lsp.Position(line_no, self.MAX_LINE)
+                )
+                diagnostics.append(
+                    lsp.Diagnostic(
+                        locrange=symbol_range,
+                        severity=lsp.DiagnosticSeverity.ERROR,
+                        message=msg
                     )
-                    diagnostics.append(
-                        lsp.Diagnostic(
-                            locrange=symbol_range,
-                            severity=lsp.DiagnosticSeverity.ERROR,
-                            message=msg
-                        )
+                )
+            except yara.WarningError as warning:
+                line_no, msg = helpers.parse_result(str(warning))
+                # VSCode is zero-indexed
+                line_no -= 1
+                first_char = helpers.get_first_non_whitespace_index(document.split("\n")[line_no])
+                symbol_range = lsp.Range(
+                    start=lsp.Position(line_no, first_char),
+                    end=lsp.Position(line_no, self.MAX_LINE)
+                )
+                diagnostics.append(
+                    lsp.Diagnostic(
+                        locrange=symbol_range,
+                        severity=lsp.DiagnosticSeverity.WARNING,
+                        message=msg
                     )
-                except yara.WarningError as warning:
-                    line_no, msg = helpers.parse_result(str(warning))
-                    # VSCode is zero-indexed
-                    line_no -= 1
-                    first_char = helpers.get_first_non_whitespace_index(document.split("\n")[line_no])
-                    symbol_range = lsp.Range(
-                        start=lsp.Position(line_no, first_char),
-                        end=lsp.Position(line_no, self.MAX_LINE)
-                    )
-                    diagnostics.append(
-                        lsp.Diagnostic(
-                            locrange=symbol_range,
-                            severity=lsp.DiagnosticSeverity.WARNING,
-                            message=msg
-                        )
-                    )
-            elif self.diagnostics_warned:
-                pass
-            else:
-                self.diagnostics_warned = True
-                raise ce.NoDependencyFound("yara-python is not installed. Diagnostics and Compile commands are disabled")
-            return diagnostics
-        except Exception as err:
-            self._logger.error(err)
-            raise ce.DiagnosticError("Could not compile rule: {}".format(err))
+                )
+            except Exception as err:
+                self._logger.error(err)
+                raise ce.DiagnosticError("Could not compile rule: {}".format(err))
+        elif self.diagnostics_warned:
+            pass
+        else:
+            self.diagnostics_warned = True
+            raise ce.NoDependencyFound("yara-python is not installed. Diagnostics and Compile commands are disabled")
+        return diagnostics
 
     # @_route("textDocument/formatting")
     async def provide_formatting(self, message: dict, has_started: bool, **kwargs) -> list:
@@ -509,88 +508,101 @@ class YaraLanguageServer(server.LanguageServer):
 
         Returns a (possibly empty) list of text edits for the client to make
         '''
-        try:
-            # TODO: Set defaults in config
-            default_options = {
-                "tabSize": 4,                   # Size of a tab in spaces
-                "insertSpaces": True,           # Prefer spaces over tabs
-                "trimTrailingWhitespace": True, # Trim trailing whitespace on a line (>3.15.0)
-                "insertFinalNewline": False,    # Insert a newline character at the end of the file if one does not exist (>3.15.0)
-                "trimFinalNewlines": False      # Trim all newlines after the final newline at the end of the file (>3.15.0)
-            }
-            edits = []
-            if self._is_module_installed("plyara"):
+        # TODO: Set defaults in config
+        default_options = {
+            "tabSize": 4,                   # Size of a tab in spaces
+            "insertSpaces": True,           # Prefer spaces over tabs
+            "trimTrailingWhitespace": True, # Trim trailing whitespace on a line (>3.15.0)
+            "insertFinalNewline": False,    # Insert a newline character at the end of the file if one does not exist (>3.15.0)
+            "trimFinalNewlines": False      # Trim all newlines after the final newline at the end of the file (>3.15.0)
+        }
+        edits = []
+        if self._is_module_installed("plyara"):
+            try:
                 # weird way to get around Python compiler that thinks plyara is not installed
                 # TODO: FIgure out the right way to dynamically import and use this module
                 plyara = sys.modules["plyara"]
-                try:
-                    params = message.get("params", {})
-                    file_uri = params.get("textDocument", {}).get("uri", None)
-                    if has_started and file_uri:
-                        dirty_files = kwargs.pop("dirty_files", {})
-                        document = self._get_document(file_uri, dirty_files)
-                        # parse options
-                        options = params.get("options", default_options)
-                        # extra check in case "options" key exists but is not a dictionary
-                        if not isinstance(options, dict):
-                            options = default_options
-                        tab_size = options.get("tabSize", default_options["tabSize"])
-                        insert_spaces = options.get("insertSpaces", default_options["insertSpaces"])
-                        trim_whitespaces = options.get("trimTrailingWhitespace", default_options["trimTrailingWhitespace"])
-                        insert_newline = options.get("insertFinalNewline", default_options["insertFinalNewline"])
-                        trim_newlines = options.get("trimFinalNewlines", default_options["trimFinalNewlines"])
-                        # configure spacing
-                        spacing = " "*tab_size if insert_spaces else "\t"
-                        self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
-                        parser = plyara.Plyara()
-                        contents = parser.parse_string(document)
-                        # start with an ordered list to make string appends easier, then join with a newline later
-                        new_text = []
-                        self._logger.info(json.dumps(contents, indent=tab_size))
-                        # plyara parses out each rule individually from the document
-                        for rule in contents:
-                            # 1. add formatted rule name + tags
-                            new_text.append("rule {} : {} {{".format(rule["rule_name"], " ".join(rule["tags"])))
-                            # 2. add meta section
-                            if "metadata" in rule:
-                                new_text.append("{}meta:".format(spacing))
-                                for entry in rule["metadata"]:
-                                    for key, value in entry.items():
-                                        new_text.append("{}{} = \"{}\"".format(spacing*2, key, value))
-                            # 3. add strings section
-                            if "strings" in rule:
-                                new_text.append("{}strings:".format(spacing))
-                                for entry in rule["strings"]:
-                                    line = "{}".format(spacing*2)
-                                    if entry["type"] == "text":
-                                        line += "{} = \"{}\"".format(entry["name"], entry["value"])
-                                    else:
-                                        line += "{} = {}".format(entry["name"], entry["value"])
-                                    new_text.append(line)
-                            # 4. add conditions section (required)
-                            new_text.append("{}condition:".format(spacing))
-                            # use a count to make sure we know when the last entry is
-                            num_conditions = len(rule["condition_terms"])
-                            for i in range(0, num_conditions):
-                                condition = rule["condition_terms"][i]
-                                # TODO: Carry condition terms over too
-                                term = condition if i == (num_conditions-1) else "{} and ".format(condition)
-                                new_text.append("{}{}".format(spacing*2, term))
-                            # 5. add newline(s) if specified
-                            if insert_newline:
-                                new_text.append("\n")
-                        self._logger.info("\n".join(new_text))
-                except plyara.exceptions.ParseTypeError as err:
-                    self._logger.warning("Could not format %s due to parsing error: %s", file_uri, err)
-            elif self.formatter_warned:
-                pass
-            else:
-                self.formatter_warned = True
-                raise ce.NoDependencyFound("plyara is not installed. Formatting is disabled")
-            return edits
-        except Exception as err:
-            self._logger.exception(err)
-            raise ce.FormatError("Could not format document: {}".format(file_uri))
+                params = message.get("params", {})
+                file_uri = params.get("textDocument", {}).get("uri", None)
+                self._logger.info(file_uri)
+                if has_started and file_uri:
+                    dirty_files = kwargs.pop("dirty_files", {})
+                    document = self._get_document(file_uri, dirty_files)
+                    # parse options
+                    options = params.get("options", default_options)
+                    # extra check in case "options" key exists but is not a dictionary
+                    if not isinstance(options, dict):
+                        options = default_options
+                    tab_size = options.get("tabSize", default_options["tabSize"])
+                    insert_spaces = options.get("insertSpaces", default_options["insertSpaces"])
+                    trim_whitespaces = options.get("trimTrailingWhitespace", default_options["trimTrailingWhitespace"])
+                    insert_newline = options.get("insertFinalNewline", default_options["insertFinalNewline"])
+                    trim_newlines = options.get("trimFinalNewlines", default_options["trimFinalNewlines"])
+                    # configure spacing
+                    spacing = " "*tab_size if insert_spaces else "\t"
+                    parser = plyara.Plyara()
+                    contents = parser.parse_string(document)
+                    self._logger.debug("Received formatting request for '%s' with options '%s': %s", file_uri, options, document[:10])
+                    # start with an ordered list to make string appends easier, then join with a newline later
+                    new_text = []
+                    self._logger.info(json.dumps(contents, indent=tab_size))
+                    # plyara parses out each rule individually from the document
+                    for rule in contents:
+                        # 1. add formatted rule name + tags
+                        new_text.append("rule {} : {} {{".format(rule["rule_name"], " ".join(rule["tags"])))
+                        # 2. add meta section
+                        if "metadata" in rule:
+                            new_text.append("{}meta:".format(spacing))
+                            for entry in rule["metadata"]:
+                                for key, value in entry.items():
+                                    new_text.append("{}{} = \"{}\"".format(spacing*2, key, value))
+                        # 3. add strings section
+                        if "strings" in rule:
+                            new_text.append("{}strings:".format(spacing))
+                            for entry in rule["strings"]:
+                                line = "{}".format(spacing*2)
+                                if entry["type"] == "text":
+                                    line += "{} = \"{}\"".format(entry["name"], entry["value"])
+                                else:
+                                    line += "{} = {}".format(entry["name"], entry["value"])
+                                new_text.append(line)
+                        # 4. add conditions section (required)
+                        new_text.append("{}condition:".format(spacing))
+                        # use a count to make sure we know when the last entry is
+                        num_conditions = len(rule["condition_terms"])
+                        for i in range(0, num_conditions):
+                            condition = rule["condition_terms"][i]
+                            # TODO: Carry condition terms over too
+                            term = condition if i == (num_conditions-1) else "{} and ".format(condition)
+                            new_text.append("{}{}".format(spacing*2, term))
+                        # 5. add newline(s) if specified
+                        if insert_newline:
+                            new_text.append("\n")
+                        # always format the whole document
+                        # TODO: Support formatting a selection
+                        document_range = lsp.Range(
+                            start=lsp.Position(line=0, char=0),
+                            end=lsp.Position(line=len(document.split("\n")), char=self.MAX_LINE)
+                        )
+                        edits.append(lsp.TextEdit(document_range, new_text))
+                    self._logger.info("\n".join(new_text))
+            except plyara.exceptions.ParseTypeError as err:
+                writer = kwargs.pop("writer")
+                msg = "Could not format {} due to parsing error: {}".format(file_uri, err)
+                self._logger.warning(msg)
+                # notify user
+                if writer is not None:
+                    params = {"type": lsp.MessageType.ERROR, "message": msg}
+                    await self.send_notification("window/showMessage", params, writer)
+            except Exception as err:
+                self._logger.exception(err)
+                raise ce.FormatError("Could not format document: {}".format(message))
+        elif self.formatter_warned:
+            pass
+        else:
+            self.formatter_warned = True
+            raise ce.NoDependencyFound("plyara is not installed. Formatting is disabled")
+        return edits
 
     # @_route("textDocument/highlight")
     async def provide_highlight(self, message: dict, has_started: bool, **kwargs) -> list:

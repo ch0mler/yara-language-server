@@ -7,6 +7,7 @@ import sys
 import pytest
 from yarals import helpers
 from yarals.base import protocol
+from yarals.base import errors as ce
 
 # don't care about pylint(protected-access) warnings since these are just tests
 # pylint: disable=W0212
@@ -428,12 +429,19 @@ async def test_diagnostics_no_results(yara_server):
     result = await yara_server.provide_diagnostic(document)
     assert result == []
 
-@pytest.mark.skip(reason="TODO: Implement logic")
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_diagnostics_notify_user():
+async def test_diagnostics_notify_user(yara_server):
     ''' Ensure the diagnostics notify the user once, and only once, if yara-python is not installed '''
-    assert False
+    expected_msg = "yara-python is not installed. Diagnostics and Compile commands are disabled"
+    document = "rule NotifyUserDiagnostic { condition: $true }"
+    try:
+        with pytest.raises(ce.NoDependencyFound) as excinfo:
+            subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "yara-python"])
+            await yara_server.provide_diagnostic(document)
+            assert expected_msg == str(excinfo.value)
+    finally:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "yara-python"])
 
 @pytest.mark.asyncio
 @pytest.mark.server
@@ -700,22 +708,27 @@ async def test_format_no_results(test_rules, yara_server):
     result = await yara_server.provide_formatting(message, True)
     assert len(result) == 0
 
-@pytest.mark.skip(reason="TODO: Implement logic")
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format_notify_user(caplog, test_rules, yara_server):
+async def test_format_notify_user(test_rules, yara_server):
     ''' Ensure the formatter notifies the user once, and only once, if plyara is not installed '''
     expected_msg = "plyara is not installed. Formatting is disabled"
-    apt_alienspy_rat = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
-    file_uri = helpers.create_file_uri(apt_alienspy_rat)
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
     message = {
         "params": {
             "textDocument": {"uri": file_uri},
             "position": {"line": 29, "character": 12}
         }
     }
-    result = await yara_server.provide_formatting(message, True)
-    assert False
+    try:
+        with pytest.raises(ce.NoDependencyFound) as excinfo:
+            subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "plyara"])
+            await yara_server.provide_formatting(message, True)
+            assert expected_msg == str(excinfo.value)
+    finally:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "plyara"])
+
 
 @pytest.mark.skip(reason="not implemented")
 @pytest.mark.server
