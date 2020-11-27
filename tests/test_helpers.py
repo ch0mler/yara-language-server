@@ -1,4 +1,5 @@
 ''' Tests for yarals.helpers module '''
+from textwrap import dedent
 from urllib.parse import quote
 
 import pytest
@@ -50,15 +51,17 @@ def test_create_file_uri(test_rules):
 @pytest.mark.helpers
 def test_format_rule(plyara_rule, format_options):
     ''' Ensure plyara rules are formatted appropriately '''
-    expected = """rule Oneline : test {
-    meta:
-        author = "test"
-        reference = "github.com"
-    strings:
-        $a = "test"
-    condition:
-        $a
-}"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        meta:
+            author = "test"
+            reference = "github.com"
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }""")
     kwargs = {
         "tab_size": format_options["tabSize"],
         "insert_spaces": format_options["insertSpaces"],
@@ -66,18 +69,25 @@ def test_format_rule(plyara_rule, format_options):
         "insert_newline": format_options["insertFinalNewline"],
         "trim_newlines": format_options["trimFinalNewlines"],
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_format_alt_tab_size(plyara_rule, format_options):
     ''' Ensure a rule is formatted appropriately with a non-default tabSize '''
-    expected = """rule Oneline : test {
-  strings:
-    $a = "test"
-  condition:
-    $a
-}"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+      meta:
+        author = "test"
+        reference = "github.com"
+      strings:
+        $a = "test"
+      condition:
+        $a
+    }""")
     kwargs = {
         "tab_size": 2,
         "insert_spaces": format_options["insertSpaces"],
@@ -85,18 +95,25 @@ def test_format_alt_tab_size(plyara_rule, format_options):
         "insert_newline": format_options["insertFinalNewline"],
         "trim_newlines": format_options["trimFinalNewlines"],
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_format_insert_tabs(plyara_rule, format_options):
     ''' Ensure a rule is formatted appropriately with tabs instead of spaces '''
-    expected = """rule Oneline : test {
-	strings:
-		$a = "test"
-	condition:
-		$a
-}"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+    	meta:
+    		author = "test"
+    		reference = "github.com"
+    	strings:
+    		$a = "test"
+    	condition:
+    		$a
+    }""")
     kwargs = {
         "tab_size": format_options["tabSize"],
         "insert_spaces": False,
@@ -104,18 +121,25 @@ def test_format_insert_tabs(plyara_rule, format_options):
         "insert_newline": format_options["insertFinalNewline"],
         "trim_newlines": format_options["trimFinalNewlines"],
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_format_no_trim_whitespace(plyara_rule, format_options):
     ''' Ensure a rule is formatted appropriately with whitespace left on each line '''
-    expected = """rule Oneline : test { 
-    strings: 
-        $a = "test" 
-    condition: 
-        $a 
-}"""
+    expected = dedent("""\
+    rule Oneline : test
+    { 
+        meta: 
+            author = "test" 
+            reference = "github.com" 
+        strings: 
+            $a = "test" 
+        condition: 
+            $a 
+    }""")
     kwargs = {
         "tab_size": format_options["tabSize"],
         "insert_spaces": format_options["insertSpaces"],
@@ -123,19 +147,26 @@ def test_format_no_trim_whitespace(plyara_rule, format_options):
         "insert_newline": format_options["insertFinalNewline"],
         "trim_newlines": format_options["trimFinalNewlines"],
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_format_with_final_newline(plyara_rule, format_options):
     ''' Ensure a rule is formatted appropriately with a newline appended '''
-    expected = """rule Oneline : test {
-    strings:
-        $a = "test"
-    condition:
-        $a
-}
-"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        meta:
+            author = "test"
+            reference = "github.com"
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }
+    """)
     kwargs = {
         "tab_size": format_options["tabSize"],
         "insert_spaces": format_options["insertSpaces"],
@@ -143,21 +174,28 @@ def test_format_with_final_newline(plyara_rule, format_options):
         "insert_newline": True,
         "trim_newlines": format_options["trimFinalNewlines"],
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_format_with_trimmed_newline(plyara_rule, format_options):
     ''' Ensure a rule is formatted appropriately with all extra newlines trimmed '''
-    expected = """rule Oneline : test {
-    strings:
-        $a = "test"
-    condition:
-        $a
-}
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        meta:
+            author = "test"
+            reference = "github.com"
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }
 
 
-"""
+    """)
     kwargs = {
         "tab_size": format_options["tabSize"],
         "insert_spaces": format_options["insertSpaces"],
@@ -165,19 +203,26 @@ def test_format_with_trimmed_newline(plyara_rule, format_options):
         "insert_newline": format_options["insertFinalNewline"],
         "trim_newlines": True,
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_format_with_both_newline_options(plyara_rule, format_options):
     ''' Ensure a rule is formatted appropriately with all extra newlines trimmed and a final newline '''
-    expected = """rule Oneline : test {
-    strings:
-        $a = "test"
-    condition:
-        $a
-}
-"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        meta:
+            author = "test"
+            reference = "github.com"
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }
+    """)
     kwargs = {
         "tab_size": format_options["tabSize"],
         "insert_spaces": format_options["insertSpaces"],
@@ -185,8 +230,10 @@ def test_format_with_both_newline_options(plyara_rule, format_options):
         "insert_newline": True,
         "trim_newlines": True,
     }
-    formatted_text = helpers.format_rule(plyara_rule, **kwargs)
-    assert formatted_text == expected
+    actual = helpers.format_rule(plyara_rule, **kwargs)
+    print("expected: %r" % expected)
+    print("actual: %r" % actual)
+    assert actual == expected
 
 @pytest.mark.helpers
 def test_get_first_non_whitespace_index():

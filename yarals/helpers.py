@@ -33,7 +33,10 @@ def format_rule(rule: dict, tab_size: int, insert_spaces: bool,
     # start with an ordered list to make string appends easier, then join with a newline later
     formatted = []
     # 1. add formatted rule name + tags
-    formatted.append("rule {} : {} {{".format(rule["rule_name"], " ".join(rule["tags"])))
+    formatted.append("rule {} : {}".format(rule["rule_name"], " ".join(rule["tags"])))
+    # add open curly brace to new line after rule name
+    # there doesn't appear to be any specific guidance here, and the YARA docs have it here
+    formatted.append("{")
     # 2. add meta section
     if "metadata" in rule:
         formatted.append("{}meta:".format(spacing))

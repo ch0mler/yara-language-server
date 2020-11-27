@@ -3,6 +3,7 @@ import json
 import logging
 import subprocess
 import sys
+from textwrap import dedent
 
 import pytest
 from yarals import helpers
@@ -510,12 +511,14 @@ async def test_exit(caplog, initialize_msg, initialized_msg, open_streams, shutd
 @pytest.mark.server
 async def test_format(format_options, test_rules, yara_server):
     ''' Ensure a text edit is provided on format with explicit options '''
-    expected = """rule Oneline : test {
-    strings:
-        $a = "test"
-    condition:
-        $a
-}"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }""")
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     message = {
@@ -535,12 +538,14 @@ async def test_format(format_options, test_rules, yara_server):
 @pytest.mark.server
 async def test_format_default_options(test_rules, yara_server):
     ''' Ensure a text edit is provided on format with implicit options '''
-    expected = """rule Oneline : test {
-    strings:
-        $a = "test"
-    condition:
-        $a
-}"""
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }""")
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     message = {
