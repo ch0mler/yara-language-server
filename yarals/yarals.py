@@ -513,7 +513,7 @@ class YaraLanguageServer(server.LanguageServer):
             try:
                 # weird way to get around Python compiler that thinks plyara is not installed
                 # TODO: FIgure out the right way to dynamically import and use this module
-                plyara = sys.modules["plyara"]
+                import plyara
                 params = message.get("params", {})
                 file_uri = params.get("textDocument", {}).get("uri", None)
                 if has_started and file_uri:
@@ -524,26 +524,44 @@ class YaraLanguageServer(server.LanguageServer):
                     # extra check in case "options" key exists but is not a dictionary
                     if not isinstance(options, dict):
                         options = {}
-                    tab_size = options.get("tabSize", 4)
-                    insert_spaces = options.get("insertSpaces", True)
-                    trim_whitespaces = options.get("trimTrailingWhitespace", True)
-                    insert_newline = options.get("insertFinalNewline", False)
-                    trim_newlines = options.get("trimFinalNewlines", True)
-                    parser = plyara.Plyara()
+                    default_indent = ' '*4
+                    tab_size = options.get("tabSize", len(default_indent))          # Size of a tab in spaces
+                    insert_spaces = options.get("insertSpaces", True)               # Prefer spaces over tabs
+                    trim_whitespaces = options.get("trimTrailingWhitespace", True)  # Trim trailing whitespace on a line
+                    insert_newline = options.get("insertFinalNewline", False)       # Insert a newline character at the end of the file if one does not exist
+                    trim_newlines = options.get("trimFinalNewlines", True)          # Trim all newlines after the final newline at the end of the file
+                    parser = plyara.Plyara(store_raw_sections=True)
                     contents = parser.parse_string(document)
                     self._logger.info(json.dumps(contents, indent=tab_size))
                     # plyara parses out each rule individually from the document
                     for rule in contents:
                         self._logger.debug("Received formatting request for '%s'", rule["rule_name"])
-                        formatted_text = helpers.format_rule(rule, tab_size, insert_spaces, trim_whitespaces, insert_newline, trim_newlines)
+                        # easy mode: rebuild rules with plyara too and post-process based on format options
+                        formatted_text = plyara.utils.rebuild_yara_rule(rule)
+                        # post-process - insert tabs instead of spaces
+                        if not insert_spaces:
+                            formatted_text.replace(default_indent, "\t")
+                        # post-process - modify number of indented spaces (prefer tabs if both specified)
+                        elif tab_size != len(default_indent):
+                            formatted_text.replace(default_indent, ' '*tab_size)
+                        # post-process - re-add whitespace if desired
+                        if not trim_whitespaces:
+                            if "raw_meta" in rule:
+                                self._logger.debug("Supposed to keep whitespaces for meta: %r", rule["raw_meta"])
+                            if "raw_strings" in rule:
+                                    self._logger.debug("Supposed to keep whitespaces for strings: %r", rule["raw_strings"])
+                            self._logger.debug("Supposed to keep whitespaces for condition: %r", rule["raw_condition"])
+                        # post-process - trim extra newlines
+                        if not trim_newlines:
+                            self._logger.debug("Supposed to keep newlines at end of rule: %r", rule["raw_condition"])
+                        # post-process - add a newline if desired
+                        if insert_newline:
+                            formatted += "\n"
                         document_range = lsp.Range(
                             start=lsp.Position(line=rule["start_line"], char=0),
                             end=lsp.Position(line=rule["stop_line"], char=self.MAX_LINE)
                         )
                         print("formatted: %r" % formatted_text)
-                        if not insert_newline:
-                            self._logger.debug("Stripping final newline from formatted text")
-                            formatted_text = formatted_text.rstrip("\n")
                         edits.append(lsp.TextEdit(document_range, formatted_text))
             except plyara.exceptions.ParseTypeError as err:
                 writer = kwargs.pop("writer")

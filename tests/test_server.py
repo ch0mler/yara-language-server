@@ -562,6 +562,27 @@ async def test_format_default_options(test_rules, yara_server):
 
 @pytest.mark.asyncio
 @pytest.mark.server
+async def test_format_alt_tabsize(format_options, test_rules, yara_server):
+    ''' Ensure a text edit is provided on format with tabSize set '''
+    expected = dedent("""\
+    }""")
+    oneline = str(test_rules.joinpath("formatting.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": {"tabSize": 2}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert edit.newText == expected
+
+@pytest.mark.asyncio
+@pytest.mark.server
 async def test_format_notify_user(test_rules, yara_server):
     ''' Ensure the formatter notifies the user once, and only once, if plyara is not installed '''
     expected_msg = "plyara is not installed. Formatting is disabled"
