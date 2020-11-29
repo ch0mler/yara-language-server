@@ -549,9 +549,14 @@ class YaraLanguageServer(server.LanguageServer):
                             self._logger.debug("Supposed to keep whitespaces for condition: %r", rule["raw_condition"])
                         # post-process - port newlines from raw document into formatted rule
                         if not trim_newlines and document.endswith("\n"):
-                            self._logger.debug("Keeping newlines at end of rule: %r", rule["raw_condition"])
-                        # post-process - add a newline if desired
-                        if insert_newline:
+                            # traverse the document backwards
+                            newlines = list(filter(lambda x: x == "\n", document.splitlines(keepends=True)))
+                            # in order to add blank newlines, another newline must be present on the last line
+                            newlines.append("\n")
+                            self._logger.debug("Keeping %d newlines at end of rule", len(newlines))
+                            formatted_text += ''.join(newlines)
+                        # post-process - add a newline if desired (only applies if we are not also preserving newlines)
+                        elif insert_newline:
                             formatted_text += "\n"
                         document_range = lsp.Range(
                             start=lsp.Position(line=rule["start_line"], char=0),
