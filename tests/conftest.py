@@ -94,5 +94,5 @@ def format_options():
         "insertSpaces": True,
         "trimTrailingWhitespace": True,
         "insertFinalNewline": False,
-        "trimFinalNewlines": False
+        "trimFinalNewlines": True
     }

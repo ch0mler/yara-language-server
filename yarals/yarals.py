@@ -534,29 +534,29 @@ class YaraLanguageServer(server.LanguageServer):
                         self._logger.debug("Received formatting request for '%s'", rule["rule_name"])
                         # easy mode: rebuild rules with plyara too and post-process based on format options
                         formatted_text = plyara_utils.rebuild_yara_rule(rule)
+                        # by default plyara appends a newline - remove it here and post-process later
+                        formatted_text = formatted_text.rstrip("\n")
                         # post-process - insert spaces instead of tabs
                         # ... by default, plyara uses tabs
                         if insert_spaces:
-                            formatted_text = formatted_text.replace('\t', ' '*tab_size)
+                            formatted_text = formatted_text.expandtabs(tab_size)
                         # post-process - re-add whitespace if desired
                         if not trim_whitespaces:
                             if "raw_meta" in rule:
                                 self._logger.debug("Supposed to keep whitespaces for meta: %r", rule["raw_meta"])
                             if "raw_strings" in rule:
-                                    self._logger.debug("Supposed to keep whitespaces for strings: %r", rule["raw_strings"])
+                                self._logger.debug("Supposed to keep whitespaces for strings: %r", rule["raw_strings"])
                             self._logger.debug("Supposed to keep whitespaces for condition: %r", rule["raw_condition"])
-                        # post-process - trim extra newlines
-                        if trim_newlines:
-                            self._logger.debug("Removing newlines at end of rule: %r", rule["raw_condition"])
-                            formatted_text = formatted_text.rstrip('\n')
+                        # post-process - port newlines from raw document into formatted rule
+                        if not trim_newlines and document.endswith("\n"):
+                            self._logger.debug("Keeping newlines at end of rule: %r", rule["raw_condition"])
                         # post-process - add a newline if desired
                         if insert_newline:
-                            formatted += "\n"
+                            formatted_text += "\n"
                         document_range = lsp.Range(
                             start=lsp.Position(line=rule["start_line"], char=0),
                             end=lsp.Position(line=rule["stop_line"], char=self.MAX_LINE)
                         )
-                        print("formatted: %r" % formatted_text)
                         edits.append(lsp.TextEdit(document_range, formatted_text))
             except plyara.exceptions.ParseTypeError as err:
                 writer = kwargs.pop("writer")

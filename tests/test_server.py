@@ -516,6 +516,7 @@ async def test_format(format_options, test_rules, yara_server):
     {
         strings:
             $a = "test"
+
         condition:
             $a
     }""")
@@ -543,6 +544,7 @@ async def test_format_default_options(test_rules, yara_server):
     {
         strings:
             $a = "test"
+
         condition:
             $a
     }""")
@@ -569,6 +571,7 @@ async def test_format_alt_tabsize(test_rules, yara_server):
     {
       strings:
         $a = "test"
+
       condition:
         $a
     }""")
@@ -596,6 +599,7 @@ async def test_format_insert_tabs(test_rules, yara_server):
     {
     	strings:
     		$a = "test"
+
     	condition:
     		$a
     }""")
@@ -616,13 +620,14 @@ async def test_format_insert_tabs(test_rules, yara_server):
 
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format_trim_whitespace(test_rules, yara_server):
+async def test_format_keep_whitespace(test_rules, yara_server):
     ''' Ensure a text edit is provided with untrimmed whitespace '''
     expected = dedent("""\
     rule Oneline : test 
     { 
         strings: 
             $a = "test" 
+
         condition: 
             $a 
     }""")
@@ -650,6 +655,7 @@ async def test_format_insert_newline(test_rules, yara_server):
     {
         strings:
             $a = "test"
+
         condition:
             $a
     }
@@ -660,7 +666,7 @@ async def test_format_insert_newline(test_rules, yara_server):
         "params": {
             "textDocument": {"uri": file_uri},
             "position": {"line": 29, "character": 12},
-            "options": {"insertSpaces": False}
+            "options": {"insertFinalNewline": True}
         }
     }
     result = await yara_server.provide_formatting(message, True)
@@ -671,27 +677,31 @@ async def test_format_insert_newline(test_rules, yara_server):
 
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format_trim_newlines(test_rules, yara_server):
-    ''' Ensure a text edit is provided with extra newlines trimmed '''
+async def test_format_keep_newlines(test_rules, yara_server):
+    ''' Ensure a text edit is provided with extra newlines '''
     expected = dedent("""\
     rule Oneline : test
     {
         strings:
             $a = "test"
+
         condition:
             $a
-    }""")
+    }
+
+
+    """)
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     with open(oneline) as ifile:
         file_uri = helpers.create_file_uri(oneline)
         dirty_files = {
-            file_uri: "%s\n\n\n\n" % ifile.read()
+            file_uri: "%s\n\n\n" % ifile.read()
         }
         message = {
             "params": {
                 "textDocument": {"uri": file_uri},
                 "position": {"line": 29, "character": 12},
-                "options": {"insertSpaces": False}
+                "options": {"trimFinalNewlines": False}
             }
         }
         result = await yara_server.provide_formatting(message, True, dirty_files=dirty_files)
