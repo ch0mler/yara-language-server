@@ -456,8 +456,7 @@ class YaraLanguageServer(server.LanguageServer):
         diagnostics = []
         if self._is_module_installed("yara"):
             # weird way to get around Python compiler that thinks yara is not installed
-            # TODO: FIgure out the right way to dynamically import and use this module
-            yara = sys.modules["yara"]
+            yara = importlib.import_module('yara')
             try:
                 yara.compile(source=document)
             except yara.SyntaxError as error:
@@ -511,9 +510,8 @@ class YaraLanguageServer(server.LanguageServer):
         edits = []
         if self._is_module_installed("plyara"):
             try:
-                # weird way to get around Python compiler that thinks plyara is not installed
-                # TODO: FIgure out the right way to dynamically import and use this module
-                import plyara
+                plyara = importlib.import_module('plyara')
+                plyara_utils = importlib.import_module('plyara.utils', package='plyara')
                 params = message.get("params", {})
                 file_uri = params.get("textDocument", {}).get("uri", None)
                 if has_started and file_uri:
@@ -524,26 +522,22 @@ class YaraLanguageServer(server.LanguageServer):
                     # extra check in case "options" key exists but is not a dictionary
                     if not isinstance(options, dict):
                         options = {}
-                    default_indent = ' '*4
-                    tab_size = options.get("tabSize", len(default_indent))          # Size of a tab in spaces
+                    tab_size = options.get("tabSize", 4)                            # Size of a tab in spaces
                     insert_spaces = options.get("insertSpaces", True)               # Prefer spaces over tabs
                     trim_whitespaces = options.get("trimTrailingWhitespace", True)  # Trim trailing whitespace on a line
                     insert_newline = options.get("insertFinalNewline", False)       # Insert a newline character at the end of the file if one does not exist
                     trim_newlines = options.get("trimFinalNewlines", True)          # Trim all newlines after the final newline at the end of the file
                     parser = plyara.Plyara(store_raw_sections=True)
                     contents = parser.parse_string(document)
-                    self._logger.info(json.dumps(contents, indent=tab_size))
                     # plyara parses out each rule individually from the document
                     for rule in contents:
                         self._logger.debug("Received formatting request for '%s'", rule["rule_name"])
                         # easy mode: rebuild rules with plyara too and post-process based on format options
-                        formatted_text = plyara.utils.rebuild_yara_rule(rule)
-                        # post-process - insert tabs instead of spaces
-                        if not insert_spaces:
-                            formatted_text.replace(default_indent, "\t")
-                        # post-process - modify number of indented spaces (prefer tabs if both specified)
-                        elif tab_size != len(default_indent):
-                            formatted_text.replace(default_indent, ' '*tab_size)
+                        formatted_text = plyara_utils.rebuild_yara_rule(rule)
+                        # post-process - insert spaces instead of tabs
+                        # ... by default, plyara uses tabs
+                        if insert_spaces:
+                            formatted_text = formatted_text.replace('\t', ' '*tab_size)
                         # post-process - re-add whitespace if desired
                         if not trim_whitespaces:
                             if "raw_meta" in rule:
@@ -552,8 +546,9 @@ class YaraLanguageServer(server.LanguageServer):
                                     self._logger.debug("Supposed to keep whitespaces for strings: %r", rule["raw_strings"])
                             self._logger.debug("Supposed to keep whitespaces for condition: %r", rule["raw_condition"])
                         # post-process - trim extra newlines
-                        if not trim_newlines:
-                            self._logger.debug("Supposed to keep newlines at end of rule: %r", rule["raw_condition"])
+                        if trim_newlines:
+                            self._logger.debug("Removing newlines at end of rule: %r", rule["raw_condition"])
+                            formatted_text = formatted_text.rstrip('\n')
                         # post-process - add a newline if desired
                         if insert_newline:
                             formatted += "\n"

@@ -562,11 +562,17 @@ async def test_format_default_options(test_rules, yara_server):
 
 @pytest.mark.asyncio
 @pytest.mark.server
-async def test_format_alt_tabsize(format_options, test_rules, yara_server):
+async def test_format_alt_tabsize(test_rules, yara_server):
     ''' Ensure a text edit is provided on format with tabSize set '''
     expected = dedent("""\
+    rule Oneline : test
+    {
+      strings:
+        $a = "test"
+      condition:
+        $a
     }""")
-    oneline = str(test_rules.joinpath("formatting.yar").resolve())
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
     message = {
         "params": {
@@ -580,6 +586,119 @@ async def test_format_alt_tabsize(format_options, test_rules, yara_server):
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True
     assert edit.newText == expected
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_insert_tabs(test_rules, yara_server):
+    ''' Ensure a text edit is provided that uses tabs instead of spaces '''
+    expected = dedent("""\
+    rule Oneline : test
+    {
+    	strings:
+    		$a = "test"
+    	condition:
+    		$a
+    }""")
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": {"insertSpaces": False}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert edit.newText == expected
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_trim_whitespace(test_rules, yara_server):
+    ''' Ensure a text edit is provided with untrimmed whitespace '''
+    expected = dedent("""\
+    rule Oneline : test 
+    { 
+        strings: 
+            $a = "test" 
+        condition: 
+            $a 
+    }""")
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": {"trimTrailingWhitespace": False}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert edit.newText == expected
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_insert_newline(test_rules, yara_server):
+    ''' Ensure a text edit is provided with an extra newline inserted '''
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }
+    """)
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    file_uri = helpers.create_file_uri(oneline)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 29, "character": 12},
+            "options": {"insertSpaces": False}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 1
+    edit = result[0]
+    assert isinstance(edit, protocol.TextEdit) is True
+    assert edit.newText == expected
+
+@pytest.mark.asyncio
+@pytest.mark.server
+async def test_format_trim_newlines(test_rules, yara_server):
+    ''' Ensure a text edit is provided with extra newlines trimmed '''
+    expected = dedent("""\
+    rule Oneline : test
+    {
+        strings:
+            $a = "test"
+        condition:
+            $a
+    }""")
+    oneline = str(test_rules.joinpath("oneline.yar").resolve())
+    with open(oneline) as ifile:
+        file_uri = helpers.create_file_uri(oneline)
+        dirty_files = {
+            file_uri: "%s\n\n\n\n" % ifile.read()
+        }
+        message = {
+            "params": {
+                "textDocument": {"uri": file_uri},
+                "position": {"line": 29, "character": 12},
+                "options": {"insertSpaces": False}
+            }
+        }
+        result = await yara_server.provide_formatting(message, True, dirty_files=dirty_files)
+        assert len(result) == 1
+        edit = result[0]
+        assert isinstance(edit, protocol.TextEdit) is True
+        assert edit.newText == expected
 
 @pytest.mark.asyncio
 @pytest.mark.server
