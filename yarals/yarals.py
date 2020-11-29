@@ -550,11 +550,11 @@ class YaraLanguageServer(server.LanguageServer):
                         # post-process - port newlines from raw document into formatted rule
                         if not trim_newlines and document.endswith("\n"):
                             # traverse the document backwards
-                            newlines = list(filter(lambda x: x == "\n", document.splitlines(keepends=True)))
+                            num_newlines = len(list(filter(lambda x: x == "", document.splitlines())))
                             # in order to add blank newlines, another newline must be present on the last line
-                            newlines.append("\n")
-                            self._logger.debug("Keeping %d newlines at end of rule", len(newlines))
-                            formatted_text += ''.join(newlines)
+                            num_newlines += 1
+                            self._logger.debug("Keeping %d newlines at end of rule", num_newlines)
+                            formatted_text += "\n"*num_newlines
                         # post-process - add a newline if desired (only applies if we are not also preserving newlines)
                         elif insert_newline:
                             formatted_text += "\n"
