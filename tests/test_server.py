@@ -618,6 +618,7 @@ async def test_format_insert_tabs(test_rules, yara_server):
     assert isinstance(edit, protocol.TextEdit) is True
     assert edit.newText == expected
 
+@pytest.mark.skip(reason="not implemented")
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_keep_whitespace(test_rules, yara_server):
@@ -633,6 +634,11 @@ async def test_format_keep_whitespace(test_rules, yara_server):
     }""")
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)
+    # spacing should be preserved
+    dirty_files = {
+        file_uri: expected
+    }
+    file_uri = helpers.create_file_uri(oneline)
     message = {
         "params": {
             "textDocument": {"uri": file_uri},
@@ -640,7 +646,7 @@ async def test_format_keep_whitespace(test_rules, yara_server):
             "options": {"trimTrailingWhitespace": False}
         }
     }
-    result = await yara_server.provide_formatting(message, True)
+    result = await yara_server.provide_formatting(message, True, dirty_files=dirty_files)
     assert len(result) == 1
     edit = result[0]
     assert isinstance(edit, protocol.TextEdit) is True

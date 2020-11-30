@@ -542,17 +542,14 @@ class YaraLanguageServer(server.LanguageServer):
                             formatted_text = formatted_text.expandtabs(tab_size)
                         # post-process - re-add whitespace if desired
                         if not trim_whitespaces:
-                            if "raw_meta" in rule:
-                                self._logger.debug("Supposed to keep whitespaces for meta: %r", rule["raw_meta"])
-                            if "raw_strings" in rule:
-                                self._logger.debug("Supposed to keep whitespaces for strings: %r", rule["raw_strings"])
-                            self._logger.debug("Supposed to keep whitespaces for condition: %r", rule["raw_condition"])
+                            self._logger.warning("The YARA language server does not currently support keeping whitespaces during formatting")
+                            # extra_spaces = filter(lambda x: x.endswith(" "), document.splitlines())
+                            # for line in extra_spaces:
+                            #     self._logger.debug("Supposed to keep whitespaces for %r", line)
                         # post-process - port newlines from raw document into formatted rule
                         if not trim_newlines and document.endswith("\n"):
-                            # traverse the document backwards
-                            num_newlines = len(list(filter(lambda x: x == "", document.splitlines())))
                             # in order to add blank newlines, another newline must be present on the last line
-                            num_newlines += 1
+                            num_newlines = 1 + len(list(filter(lambda x: x == "", document.splitlines())))
                             self._logger.debug("Keeping %d newlines at end of rule", num_newlines)
                             formatted_text += "\n"*num_newlines
                         # post-process - add a newline if desired (only applies if we are not also preserving newlines)
