@@ -1,6 +1,7 @@
 ''' Implements the language server for YARA '''
 import asyncio
 from copy import deepcopy
+from enum import IntEnum
 import importlib
 from itertools import chain
 import json
@@ -15,6 +16,12 @@ from .base import errors as ce
 from . import helpers
 
 SCHEMA = Path(__file__).parent.joinpath("data", "modules.json").resolve()
+
+class RouteType(IntEnum):
+    ''' Type of request being routed '''
+    FEATURE = 0     # Language server feature to provide
+    EVENT = 1       # Event notification from the client, such as 'didChange', 'didSave', etc.
+    COMMAND = 2     # Command to provide
 
 
 class YaraLanguageServer(server.LanguageServer):
@@ -72,19 +79,19 @@ class YaraLanguageServer(server.LanguageServer):
         with open(file_path, "r") as rule_file:
             return rule_file.read()
 
-    def _route(self, request, method, notification=False):
+    def _route(self, request: str, method, request_type: RouteType=RouteType.FEATURE):
         '''Route JSON-RPC requests to the appropriate method
-
         :request: string. Request type being sent by client
         :method: function. Method to call when request is encountered
-        :notification: bool. Type of request being handled. If set to True,
-                            request type is a 'did' event, such as 'didChange', 'didSave', etc.
+        :request_type: string. Type of request being handled.
         '''
         method_object_name = method.__self__.__class__.__name__
         logging.debug("Routing '%s' to '%s.%s()'", request, method_object_name, method.__name__)
-        if notification:
+        if request_type == RouteType.EVENT:
             self.event_handlers[request] = method
-        else:
+        elif request_type == RouteType.COMMAND:
+            self.command_handlers[request] = method
+        elif request_type == RouteType.FEATURE:
             self.request_handlers[request] = method
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -250,7 +257,7 @@ class YaraLanguageServer(server.LanguageServer):
                 if change:
                     dirty_files[file_uri] = change
 
-    # @_route("textDocument/didClose", notification=True)
+    # @_route("textDocument/didClose", request_type=RouteType.EVENT)
     async def event_did_close(self, has_started: bool, **kwargs):
         ''' If file was previously tracked as 'dirty', remove tracking. '''
         message = kwargs.pop("message", {})
@@ -263,7 +270,7 @@ class YaraLanguageServer(server.LanguageServer):
                 del dirty_files[file_uri]
                 self._logger.debug("Removed %s from dirty files list", file_uri)
 
-    # @_route("textDocument/didSave", notification=True)
+    # @_route("textDocument/didSave", request_type=RouteType.EVENT)
     async def event_did_save(self, has_started: bool, **kwargs):
         '''If file was previously tracked as 'dirty', remove tracking.
            If 'compile_on_save' is True, analyze saved document and publish diagnostics
@@ -292,7 +299,7 @@ class YaraLanguageServer(server.LanguageServer):
             }
             await self.send_notification("textDocument/publishDiagnostics", params, writer)
 
-    # @_route("exit", notification=True)
+    # @_route("exit", request_type=RouteType.EVENT)
     async def event_exit(self, has_started: bool, **kwargs):
         ''' Remove client (StreamWriter) from the list of tracked clients and exit process '''
         if has_started:
@@ -331,6 +338,7 @@ class YaraLanguageServer(server.LanguageServer):
             }
         return response
 
+    # @_route("yara.CompileAllRules", request_type=RouteType.COMMAND)
     async def _compile_all_rules(self, dirty_files: dict, workspace=None) -> list:
         # temp copy of filenames => contents
         # do a deep copy in order to not mess with dirty file contents
