@@ -43,10 +43,12 @@ class YaraLanguageServer(server.LanguageServer):
         self._route("textDocument/references", self.provide_reference)
         self._route("textDocument/rename", self.provide_rename)
         self.event_handlers = {}
-        self._route("textDocument/didChange", self.event_did_change, notification=True)
-        self._route("textDocument/didClose", self.event_did_close, notification=True)
-        self._route("textDocument/didSave", self.event_did_save, notification=True)
-        self._route("exit", self.event_exit, notification=True)
+        self._route("textDocument/didChange", self.event_did_change, request_type=RouteType.EVENT)
+        self._route("textDocument/didClose", self.event_did_close, request_type=RouteType.EVENT)
+        self._route("textDocument/didSave", self.event_did_save, request_type=RouteType.EVENT)
+        self._route("exit", self.event_exit, request_type=RouteType.EVENT)
+        self._route("$/cancelRequest", self.event_cancel, request_type=RouteType.EVENT)
+        self.command_handlers = {}
 
     def _is_module_installed(self, module_name) -> bool:
         ''' Check if the given module has been installed '''
@@ -153,7 +155,7 @@ class YaraLanguageServer(server.LanguageServer):
                 self._logger.warning(warn)
                 params = {
                     "type": lsp.MessageType.WARNING,
-                    "message": warn
+                    "message": str(warn)
                 }
                 await self.send_notification("window/showMessage", params, writer)
             except (ce.CodeCompletionError, ce.DefinitionError, ce.DiagnosticError, ce.HighlightError, \
@@ -222,7 +224,16 @@ class YaraLanguageServer(server.LanguageServer):
                 server_options["textDocumentSync"] = lsp.TextSyncKind.FULL
             return {"capabilities": server_options}
 
-    # @_route("textDocument/didChange", notification=True)
+    # @_route("$/cancelRequest", request_type=RouteType.EVENT)
+    async def event_cancel(self, has_started: bool, **kwargs):
+        ''' Ignore cancellation requests for now until I can figure out how to cancel tasks '''
+        if has_started:
+            message = kwargs.pop("message", {})
+            params = message.get("params", {})
+            msg_id = params.get("id")
+            self._logger.debug("Client requested cancellation for message %d. Doing nothing", msg_id)
+
+    # @_route("textDocument/didChange", request_type=RouteType.EVENT)
     async def event_did_change(self, has_started: bool, **kwargs):
         '''If file has new unsaved changes, start tracking it as dirty,
            so other commands will continue to work with appropriate text locations
@@ -556,7 +567,7 @@ class YaraLanguageServer(server.LanguageServer):
                         elif insert_newline:
                             formatted_text += "\n"
                         document_range = lsp.Range(
-                            start=lsp.Position(line=rule["start_line"], char=0),
+                            start=lsp.Position(line=rule["start_line"]-1, char=0),
                             end=lsp.Position(line=rule["stop_line"], char=self.MAX_LINE)
                         )
                         edits.append(lsp.TextEdit(document_range, formatted_text))
