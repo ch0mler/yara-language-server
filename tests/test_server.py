@@ -433,7 +433,7 @@ async def test_diagnostics_no_results(yara_server):
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_diagnostics_notify_user(yara_server):
-    ''' Ensure the diagnostics notify the user once, and only once, if yara-python is not installed '''
+    ''' Ensure the diagnostics notify the user if yara-python is not installed '''
     expected_msg = "yara-python is not installed. Diagnostics and Compile commands are disabled"
     document = "rule NotifyUserDiagnostic { condition: $true }"
     try:
@@ -719,7 +719,7 @@ async def test_format_keep_newlines(test_rules, yara_server):
 @pytest.mark.asyncio
 @pytest.mark.server
 async def test_format_notify_user(test_rules, yara_server):
-    ''' Ensure the formatter notifies the user once, and only once, if plyara is not installed '''
+    ''' Ensure the formatter notifies the user if plyara is not installed '''
     expected_msg = "plyara is not installed. Formatting is disabled"
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
     file_uri = helpers.create_file_uri(oneline)

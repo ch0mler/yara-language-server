@@ -35,8 +35,6 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Handle the particulars of the server's YARA implementation '''
         super().__init__()
         self._logger = logging.getLogger("yara")
-        self.diagnostics_warned = False
-        self.formatter_warned = False
         self.workspace = False
         self.request_handlers = {}
         self._route("initialize", self.initialize)
@@ -513,10 +511,7 @@ class YaraLanguageServer(server.LanguageServer):
             except Exception as err:
                 self._logger.error(err)
                 raise ce.DiagnosticError("Could not compile rule: {}".format(err))
-        elif self.diagnostics_warned:
-            pass
         else:
-            self.diagnostics_warned = True
             raise ce.NoDependencyFound("yara-python is not installed. Diagnostics and Compile commands are disabled")
         return diagnostics
 
@@ -574,9 +569,11 @@ class YaraLanguageServer(server.LanguageServer):
                         # post-process - add a newline if desired (only applies if we are not also preserving newlines)
                         elif insert_newline:
                             formatted_text += "\n"
+                       # vscode uses 0-based indices for lines, while plyara uses 1-based indices
+                       # ... so we need to subtract one from each line for the range
                         document_range = lsp.Range(
                             start=lsp.Position(line=rule["start_line"]-1, char=0),
-                            end=lsp.Position(line=rule["stop_line"], char=self.MAX_LINE)
+                            end=lsp.Position(line=rule["stop_line"]-1, char=self.MAX_LINE)
                         )
                         edits.append(lsp.TextEdit(document_range, formatted_text))
             except plyara.exceptions.ParseTypeError as err:
@@ -590,10 +587,7 @@ class YaraLanguageServer(server.LanguageServer):
             except Exception as err:
                 self._logger.exception(err)
                 raise ce.FormatError("Could not format document: {}".format(message))
-        elif self.formatter_warned:
-            pass
         else:
-            self.formatter_warned = True
             raise ce.NoDependencyFound("plyara is not installed. Formatting is disabled")
         return edits
 
