@@ -35,6 +35,7 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Handle the particulars of the server's YARA implementation '''
         super().__init__()
         self._logger = logging.getLogger("yara")
+        self.running_tasks = {}
         self.workspace = False
         self.request_handlers = {}
         self._route("initialize", self.initialize)
@@ -106,6 +107,7 @@ class YaraLanguageServer(server.LanguageServer):
         self.num_clients += 1
         while True:
             try:
+                # first check if this client is still sending messages
                 if reader.at_eof():
                     self._logger.info("Client has closed")
                     self.num_clients -= 1
@@ -115,6 +117,9 @@ class YaraLanguageServer(server.LanguageServer):
                     dirty_files.clear()
                     # remove connected clients
                     await self.remove_client(writer)
+                # then clean up completed/cancelled tasks
+                self.resolve_tasks()
+                # finally read our data
                 message = await self.read_request(reader)
                 # this matches some kind of JSON-RPC message
                 if "jsonrpc" in message:
@@ -126,9 +131,13 @@ class YaraLanguageServer(server.LanguageServer):
                         # by sending the full request message to each method
                         if method in self.request_handlers:
                             # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
-                            response = await self.request_handlers[method](message, has_started, dirty_files=dirty_files, writer=writer)
-                            if response:
-                                await self.send_response(message["id"], response, writer)
+                            coroutine = self.request_handlers[method]
+                            task = asyncio.create_task(coroutine(message, has_started, dirty_files=dirty_files, writer=writer))
+                            task_name = "{:d}-{}".format(message["id"], method)
+                            self.running_tasks[message["id"]] = (task_name, task)
+                            # TODO: Actually run the task and move on instead of waiting for output
+                            response = await task
+                            await self.send_response(message["id"], response, writer)
                         else:
                             # TODO: Figure out what else needs to be done when an unknown command is encountered
                             self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
@@ -235,8 +244,10 @@ class YaraLanguageServer(server.LanguageServer):
         if has_started:
             message = kwargs.pop("message", {})
             params = message.get("params", {})
-            msg_id = params.get("id")
-            self._logger.debug("Client requested cancellation for message %d. Doing nothing", msg_id)
+            msg_id = int(params.get("id"))
+            # TODO: figure out the real way to do this
+            # ... I believe I'll just cancel 'event_cancel' every time
+            self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
 
     # @_route("textDocument/didChange", request_type=RouteType.EVENT)
     async def event_did_change(self, has_started: bool, **kwargs):
@@ -733,6 +744,22 @@ class YaraLanguageServer(server.LanguageServer):
         except Exception as err:
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))
+
+    def resolve_tasks(self):
+        ''' Remove cancelled or finished tasks from the running tasks list '''
+        completed_tasks = []
+        for msg_id, task_info in self.running_tasks.items():
+            task_name, task = task_info
+            if task.done():
+                self._logger.debug("Task %s has finished. Removing from running tasks", task_name)
+                completed_tasks.append(msg_id)
+            elif task.cancelled():
+                self._logger.debug("Task %s has been cancelled. Removing from running tasks", task_name)
+                completed_tasks.append(msg_id)
+            else:
+                self._logger.debug("Task %s is still running. Doing nothing", task_name)
+        for msg_id in completed_tasks:
+            del self.running_tasks[msg_id]
 
     # @_route("shutdown")
     async def shutdown(self, message: dict, has_started: bool, **kwargs):

@@ -275,6 +275,8 @@ class ResponseError():
     def convert_exception(exception: Exception):
         ''' Convert an exception object into a ResponseError '''
         code = JsonRPCError.UNKNOWN_ERROR_CODE
+        message=exception.args[0]
+        data = None
         if isinstance(exception, AttributeError):
             code = JsonRPCError.INVALID_PARAMS
         elif isinstance(exception, NameError):
@@ -284,7 +286,7 @@ class ResponseError():
         elif isinstance(exception, (RuntimeError, ce.CodeCompletionError, ce.DefinitionError, ce.DiagnosticError, ce.FormatError,
                                     ce.HighlightError,ce.HoverError, ce.NoDependencyFound, ce.RenameError, ce.SymbolReferenceError)):
             code = JsonRPCError.INTERNAL_ERROR
-        return ResponseError(code=code, message=exception.args[0])
+        return ResponseError(code=code, message=message, data=data)
 
     def __eq__(self, other) -> bool:
         try:
