@@ -35,7 +35,6 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Handle the particulars of the server's YARA implementation '''
         super().__init__()
         self._logger = logging.getLogger("yara")
-        self.running_tasks = {}
         self.workspace = False
         self.request_handlers = {}
         self._route("initialize", self.initialize)
@@ -245,6 +244,7 @@ class YaraLanguageServer(server.LanguageServer):
             message = kwargs.pop("message", {})
             params = message.get("params", {})
             msg_id = int(params.get("id"))
+            task = self.running_tasks[msg_id]
             # TODO: figure out the real way to do this
             # ... I believe I'll just cancel 'event_cancel' every time
             self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
@@ -744,22 +744,6 @@ class YaraLanguageServer(server.LanguageServer):
         except Exception as err:
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))
-
-    def resolve_tasks(self):
-        ''' Remove cancelled or finished tasks from the running tasks list '''
-        completed_tasks = []
-        for msg_id, task_info in self.running_tasks.items():
-            task_name, task = task_info
-            if task.done():
-                self._logger.debug("Task %s has finished. Removing from running tasks", task_name)
-                completed_tasks.append(msg_id)
-            elif task.cancelled():
-                self._logger.debug("Task %s has been cancelled. Removing from running tasks", task_name)
-                completed_tasks.append(msg_id)
-            else:
-                self._logger.debug("Task %s is still running. Doing nothing", task_name)
-        for msg_id in completed_tasks:
-            del self.running_tasks[msg_id]
 
     # @_route("shutdown")
     async def shutdown(self, message: dict, has_started: bool, **kwargs):
