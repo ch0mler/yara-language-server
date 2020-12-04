@@ -63,20 +63,6 @@ class LanguageServer():
             self._logger.critical("Unknown exception encountered. Continuing on")
             self._logger.exception(err)
 
-    def execute_method(self, msg_id: int, method: str, **params) -> asyncio.Task:
-        '''Execute a method, such as a definiton or hover provider, as an asynchronous task
-
-        :msg_id: JSON-RPC message ID to map task to
-        :method: Provider method to call, such as 'textDocument/definition'
-        :params: Additional parameters to be passed to the coroutine
-
-        Returns the task that was created and queued
-        '''
-        coroutine = self.request_handlers[method]
-        task = asyncio.create_task(coroutine(**params))
-        self.running_tasks[msg_id] = task
-        return task
-
     async def event_cancel(self, has_started: bool, **kwargs):
         ''' Ignore cancellation requests for now until I can figure out how to cancel tasks '''
         try:
@@ -86,7 +72,7 @@ class LanguageServer():
                 msg_id = int(params.get("id"))
                 if msg_id in self.running_tasks:
                     task = self.running_tasks[msg_id]
-                    task_name = "Task-{:d}".format(msg_id)
+                    task_name = "Message-{:d}".format(msg_id)
                     self._logger.debug("Client requested cancellation for %s", task_name)
                     task.cancel()
                 else:
@@ -146,6 +132,20 @@ class LanguageServer():
             await self.remove_client(writer)
             raise ce.ServerExit("Server exiting process per client request")
 
+    def execute_method(self, msg_id: int, method: str, **params) -> asyncio.Task:
+        '''Execute a method, such as a definiton or hover provider, as an asynchronous task
+
+        :msg_id: JSON-RPC message ID to map task to
+        :method: Provider method to call, such as 'textDocument/definition'
+        :params: Additional parameters to be passed to the coroutine
+
+        Returns the task that was created and queued
+        '''
+        coroutine = self.request_handlers[method]
+        task = asyncio.create_task(coroutine(**params))
+        self.running_tasks[msg_id] = task
+        return task
+
     async def read_request(self, reader: asyncio.StreamReader) -> dict:
         ''' Read data from the client '''
         # we don't want handle_client() to deal with anything other than dicts
@@ -176,12 +176,11 @@ class LanguageServer():
         ''' Remove cancelled or finished tasks from the running tasks list '''
         completed_tasks = []
         for msg_id, task in self.running_tasks.items():
-            task_name = "Task-{:d}".format(msg_id)
+            task_name = "Message-{:d}".format(msg_id)
             if task.done():
                 self._logger.debug("%s has finished. Removing from running tasks", task_name)
                 response = task.result()
                 self._logger.debug("response to %s", response)
-                # await self.send_response(message["id"], response, writer)
                 completed_tasks.append(msg_id)
             elif task.cancelled():
                 self._logger.debug("%s has been cancelled. Removing from running tasks", task_name)
