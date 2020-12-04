@@ -130,10 +130,13 @@ class YaraLanguageServer(server.LanguageServer):
                         # by sending the full request message to each method
                         if method in self.request_handlers:
                             # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
-                            coroutine = self.request_handlers[method]
-                            task = asyncio.create_task(coroutine(message, has_started, dirty_files=dirty_files, writer=writer))
-                            task_name = "{:d}-{}".format(message["id"], method)
-                            self.running_tasks[message["id"]] = (task_name, task)
+                            params = {
+                                "message": message,
+                                "has_started": has_started,
+                                "dirty_files": dirty_files,
+                                "writer": writer
+                            }
+                            task = self.queue_task(message["id"], method, **params)
                             # TODO: Actually run the task and move on instead of waiting for output
                             response = await task
                             await self.send_response(message["id"], response, writer)
@@ -744,6 +747,21 @@ class YaraLanguageServer(server.LanguageServer):
         except Exception as err:
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))
+
+    def queue_task(self, msg_id: int, method: str, **params) -> asyncio.Task:
+        '''Queue an asynchronous task to run
+           Typically, this will be a provider feature, such as a definition or hover
+
+        :msg_id: Current message ID to derive task from
+        :method: Provider method to call, such as 'textDocument/definition'
+        :params: Additional parameters to be passed to the coroutine
+
+        Returns the task that was created and queued
+        '''
+        coroutine = self.request_handlers[method]
+        task = asyncio.create_task(coroutine(**params))
+        self.running_tasks[msg_id] = task
+        return task
 
     # @_route("shutdown")
     async def shutdown(self, message: dict, has_started: bool, **kwargs):

@@ -82,16 +82,15 @@ class LanguageServer():
     def resolve_tasks(self):
         ''' Remove cancelled or finished tasks from the running tasks list '''
         completed_tasks = []
-        for msg_id, task_info in self.running_tasks.items():
-            task_name, task = task_info
+        for msg_id, task in self.running_tasks.items():
             if task.done():
-                self._logger.debug("Task %s has finished. Removing from running tasks", task_name)
+                self._logger.debug("Task %s has finished. Removing from running tasks", str(task))
                 completed_tasks.append(msg_id)
             elif task.cancelled():
-                self._logger.debug("Task %s has been cancelled. Removing from running tasks", task_name)
+                self._logger.debug("Task %s has been cancelled. Removing from running tasks", str(task))
                 completed_tasks.append(msg_id)
             else:
-                self._logger.debug("Task %s is still running. Doing nothing", task_name)
+                self._logger.debug("Task %s is still running. Doing nothing", str(task))
         for msg_id in completed_tasks:
             del self.running_tasks[msg_id]
 
