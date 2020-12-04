@@ -6,6 +6,7 @@ import pytest
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 @pytest.mark.transport
 async def test_tcp_closed(open_streams):
     ''' Ensure the transport mechanism is properly closed '''
@@ -15,6 +16,7 @@ async def test_tcp_closed(open_streams):
     assert reader.at_eof() is True
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 @pytest.mark.transport
 async def test_tcp_opened(open_streams):
     ''' Ensure the transport mechanism is properly opened '''

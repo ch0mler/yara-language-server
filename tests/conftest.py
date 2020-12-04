@@ -11,11 +11,11 @@ from yarals import yarals
 
 def pytest_configure(config):
     ''' Registering custom markers '''
+    config.addinivalue_line("markers", "integration: Run integration tests that require setting up a networked server instance")
     config.addinivalue_line("markers", "command: Run executeCommand integration tests")
     config.addinivalue_line("markers", "config: Run config unittests")
     config.addinivalue_line("markers", "helpers: Run helper function unittests")
     config.addinivalue_line("markers", "protocol: Run language server protocol unittests")
-    config.addinivalue_line("markers", "server: Run YARA-specific protocol unittests")
     config.addinivalue_line("markers", "transport: Run network transport unittests")
 
 @pytest.fixture
