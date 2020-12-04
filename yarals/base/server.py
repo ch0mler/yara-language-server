@@ -77,6 +77,75 @@ class LanguageServer():
         self.running_tasks[msg_id] = task
         return task
 
+    async def event_cancel(self, has_started: bool, **kwargs):
+        ''' Ignore cancellation requests for now until I can figure out how to cancel tasks '''
+        try:
+            if has_started:
+                message = kwargs.pop("message", {})
+                params = message.get("params", {})
+                msg_id = int(params.get("id"))
+                if msg_id in self.running_tasks:
+                    task = self.running_tasks[msg_id]
+                    # TODO: figure out the real way to do this
+                    # ... I believe I'll just cancel 'event_cancel' every time
+                    self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
+                else:
+                    self._logger.debug("Client requested cancellation for message %d, but it is not running", msg_id)
+        except ValueError as err:
+            self._logger.warning("Could not convert message ID to integer: %s", err)
+        except Exception as err:
+            self._logger.warning("Ignoring error that occurred during task cancellation: %s", err)
+
+    async def event_did_change(self, has_started: bool, **kwargs):
+        '''If file has new unsaved changes, start tracking it as dirty,
+           so other commands will continue to work with appropriate text locations
+        '''
+        message = kwargs.pop("message", {})
+        params = message.get("params", {})
+        file_uri = params.get("textDocument", {}).get("uri", None)
+        if has_started and file_uri:
+            self._logger.debug("Adding %s to dirty files list", file_uri)
+            dirty_files = kwargs.pop("dirty_files", {})
+            for changes in params.get("contentChanges", []):
+                # full text is submitted with each change
+                change = changes.get("text", None)
+                if change:
+                    dirty_files[file_uri] = change
+
+    async def event_did_close(self, has_started: bool, **kwargs):
+        ''' If file was previously tracked as 'dirty', remove tracking. '''
+        message = kwargs.pop("message", {})
+        params = message.get("params", {})
+        file_uri = params.get("textDocument", {}).get("uri", "")
+        if has_started and file_uri:
+            dirty_files = kwargs.pop("dirty_files", {})
+            # file is no longer dirty after closing
+            if file_uri in dirty_files:
+                del dirty_files[file_uri]
+                self._logger.debug("Removed %s from dirty files list", file_uri)
+
+    async def event_did_save(self, has_started: bool, **kwargs):
+        '''If file was previously tracked as 'dirty', remove tracking.
+           If 'compile_on_save' is True, analyze saved document and publish diagnostics
+        '''
+        message = kwargs.pop("message", {})
+        params = message.get("params", {})
+        file_uri = params.get("textDocument", {}).get("uri", "")
+        if has_started and file_uri:
+            dirty_files = kwargs.pop("dirty_files", {})
+            # file is no longer dirty after saving
+            if file_uri in dirty_files:
+                del dirty_files[file_uri]
+                self._logger.debug("Removed %s from dirty files list", file_uri)
+
+    async def event_exit(self, has_started: bool, **kwargs):
+        ''' Remove client (StreamWriter) from the list of tracked clients and exit process '''
+        if has_started:
+            # first remove the client associated with this handler
+            writer = kwargs.pop("writer")
+            await self.remove_client(writer)
+            raise ce.ServerExit("Server exiting process per client request")
+
     async def read_request(self, reader: asyncio.StreamReader) -> dict:
         ''' Read data from the client '''
         # we don't want handle_client() to deal with anything other than dicts

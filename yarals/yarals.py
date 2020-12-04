@@ -159,7 +159,7 @@ class YaraLanguageServer(LanguageServer):
                 }
                 await self.send_notification("window/showMessage", params, writer)
 
-    # @_route("initialize")
+    # @self.route("initialize")
     async def initialize(self, message: dict, has_started: bool, **kwargs) -> dict:
         '''Announce language support methods
 
@@ -216,72 +216,21 @@ class YaraLanguageServer(LanguageServer):
                 server_options["textDocumentSync"] = lsp.TextSyncKind.FULL
             return {"capabilities": server_options}
 
-    # @_route("$/cancelRequest", request_type=RouteType.EVENT)
-    async def event_cancel(self, has_started: bool, **kwargs):
-        ''' Ignore cancellation requests for now until I can figure out how to cancel tasks '''
-        try:
-            if has_started:
-                message = kwargs.pop("message", {})
-                params = message.get("params", {})
-                msg_id = int(params.get("id"))
-                if msg_id in self.running_tasks:
-                    task = self.running_tasks[msg_id]
-                    # TODO: figure out the real way to do this
-                    # ... I believe I'll just cancel 'event_cancel' every time
-                    self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
-                else:
-                    self._logger.debug("Client requested cancellation for message %d, but it is not running", msg_id)
-        except ValueError as err:
-            self._logger.warning("Could not convert message ID to integer: %s", err)
-        except Exception as err:
-            self._logger.warning("Ignoring error that occurred during task cancellation: %s", err)
-
-    # @_route("textDocument/didChange", request_type=RouteType.EVENT)
-    async def event_did_change(self, has_started: bool, **kwargs):
-        '''If file has new unsaved changes, start tracking it as dirty,
-           so other commands will continue to work with appropriate text locations
-        '''
-        message = kwargs.pop("message", {})
-        params = message.get("params", {})
-        file_uri = params.get("textDocument", {}).get("uri", None)
-        if has_started and file_uri:
-            self._logger.debug("Adding %s to dirty files list", file_uri)
-            dirty_files = kwargs.pop("dirty_files", {})
-            for changes in params.get("contentChanges", []):
-                # full text is submitted with each change
-                change = changes.get("text", None)
-                if change:
-                    dirty_files[file_uri] = change
-
-    # @_route("textDocument/didClose", request_type=RouteType.EVENT)
-    async def event_did_close(self, has_started: bool, **kwargs):
-        ''' If file was previously tracked as 'dirty', remove tracking. '''
-        message = kwargs.pop("message", {})
-        params = message.get("params", {})
-        file_uri = params.get("textDocument", {}).get("uri", "")
-        if has_started and file_uri:
-            dirty_files = kwargs.pop("dirty_files", {})
-            # file is no longer dirty after closing
-            if file_uri in dirty_files:
-                del dirty_files[file_uri]
-                self._logger.debug("Removed %s from dirty files list", file_uri)
-
-    # @_route("textDocument/didSave", request_type=RouteType.EVENT)
+    # @self.route("textDocument/didSave", request_type=RouteType.EVENT)
     async def event_did_save(self, has_started: bool, **kwargs):
-        '''If file was previously tracked as 'dirty', remove tracking.
-           If 'compile_on_save' is True, analyze saved document and publish diagnostics
+        '''Overrides the base server's event_did_save()
+            If file was previously tracked as 'dirty', remove tracking.
+            If 'compile_on_save' is True, analyze saved document and publish diagnostics
         '''
+        # first make sure the file is no longer tracked as dirty
+        super().event_did_save(has_started, **kwargs)
         message = kwargs.pop("message", {})
         params = message.get("params", {})
         file_uri = params.get("textDocument", {}).get("uri", "")
+        # then do the YARA-specific functionality of publishing diagnostics if configuration is set
         if has_started and file_uri:
             config = kwargs.pop("config", {})
-            dirty_files = kwargs.pop("dirty_files", {})
             writer = kwargs.pop("writer")
-            # file is no longer dirty after saving
-            if file_uri in dirty_files:
-                del dirty_files[file_uri]
-                self._logger.debug("Removed %s from dirty files list", file_uri)
             if config.get("compile_on_save", False):
                 file_path = helpers.parse_uri(file_uri)
                 with open(file_path, "rb") as ifile:
@@ -295,16 +244,7 @@ class YaraLanguageServer(LanguageServer):
             }
             await self.send_notification("textDocument/publishDiagnostics", params, writer)
 
-    # @_route("exit", request_type=RouteType.EVENT)
-    async def event_exit(self, has_started: bool, **kwargs):
-        ''' Remove client (StreamWriter) from the list of tracked clients and exit process '''
-        if has_started:
-            # first remove the client associated with this handler
-            writer = kwargs.pop("writer")
-            await self.remove_client(writer)
-            raise ce.ServerExit("Server exiting process per client request")
-
-    # @_route("workspace/executeCommand")
+    # @self.route("workspace/executeCommand")
     async def execute_command(self, message: dict, has_started: bool, **kwargs) -> dict:
         '''Execute the specified command
 
@@ -334,7 +274,7 @@ class YaraLanguageServer(LanguageServer):
             }
         return response
 
-    # @_route("yara.CompileAllRules", request_type=RouteType.COMMAND)
+    # @self.route("yara.CompileAllRules", request_type=RouteType.COMMAND)
     async def _compile_all_rules(self, dirty_files: dict, workspace=None) -> list:
         # temp copy of filenames => contents
         # do a deep copy in order to not mess with dirty file contents
@@ -359,7 +299,7 @@ class YaraLanguageServer(LanguageServer):
                 })
         return diagnostics
 
-    # @_route("textDocument/completion")
+    # @self.route("textDocument/completion")
     async def provide_code_completion(self, message: dict, has_started: bool, **kwargs) -> list:
         '''Respond to the completionItem/resolve request
 
@@ -403,7 +343,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.CodeCompletionError("Could not offer completion items: {}".format(err))
 
-    # @_route("textDocument/definition")
+    # @self.route("textDocument/definition")
     async def provide_definition(self, message: dict, has_started: bool, **kwargs) -> list:
         '''Respond to the textDocument/definition request
 
@@ -513,7 +453,7 @@ class YaraLanguageServer(LanguageServer):
             raise ce.NoDependencyFound("yara-python is not installed. Diagnostics and Compile commands are disabled")
         return diagnostics
 
-    # @_route("textDocument/formatting")
+    # @self.route("textDocument/formatting")
     async def provide_formatting(self, message: dict, has_started: bool, **kwargs) -> list:
         '''Respond to the textDocument/formatting request
 
@@ -589,7 +529,7 @@ class YaraLanguageServer(LanguageServer):
             raise ce.NoDependencyFound("plyara is not installed. Formatting is disabled")
         return edits
 
-    # @_route("textDocument/highlight")
+    # @self.route("textDocument/highlight")
     async def provide_highlight(self, message: dict, has_started: bool, **kwargs) -> list:
         ''' Respond to the textDocument/documentHighlight request '''
         # pylint: disable=W0613
@@ -605,7 +545,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.HighlightError("Could not offer code highlighting: {}".format(err))
 
-    # @_route("textDocument/hover")
+    # @self.route("textDocument/hover")
     async def provide_hover(self, message: dict, has_started: bool, **kwargs) -> lsp.Hover:
         ''' Respond to the textDocument/hover request '''
         try:
@@ -631,7 +571,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.HoverError("Could not offer definition hover: {}".format(err))
 
-    # @_route("textDocument/references")
+    # @self.route("textDocument/references")
     async def provide_reference(self, message: dict, has_started: bool, **kwargs) -> list:
         '''The references request is sent from the client to the server to resolve
         project-wide references for the symbol denoted by the given text document position
@@ -695,7 +635,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.SymbolReferenceError("Could not find references for '{}': {}".format(symbol, err))
 
-    # @_route("textDocument/rename")
+    # @self.route("textDocument/rename")
     async def provide_rename(self, message: dict, has_started: bool, **kwargs) -> list:
         ''' Respond to the textDocument/rename request '''
         try:
@@ -732,7 +672,7 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))
 
-    # @_route("shutdown")
+    # @self.route("shutdown")
     async def shutdown(self, message: dict, has_started: bool, **kwargs):
         '''Shut down the server, clear all unsaved, tracked files,
         and notify client to begin exiting
