@@ -1,7 +1,6 @@
 ''' Implements the language server for YARA '''
 import asyncio
 from copy import deepcopy
-from enum import IntEnum
 import importlib
 from itertools import chain
 import json
@@ -11,20 +10,15 @@ import re
 import sys
 
 from .base import protocol as lsp
-from .base import server
 from .base import errors as ce
+from .base.server import LanguageServer, RouteType
 from . import helpers
 
+# extra YARA module data from this path
 SCHEMA = Path(__file__).parent.joinpath("data", "modules.json").resolve()
 
-class RouteType(IntEnum):
-    ''' Type of request being routed '''
-    FEATURE = 0     # Language server feature to provide
-    EVENT = 1       # Event notification from the client, such as 'didChange', 'didSave', etc.
-    COMMAND = 2     # Command to provide
 
-
-class YaraLanguageServer(server.LanguageServer):
+class YaraLanguageServer(LanguageServer):
     ''' Implements the language server for YARA '''
     # variable symbols have a few possible first characters
     _varchar = ["$", "#", "@", "!"]
@@ -36,24 +30,21 @@ class YaraLanguageServer(server.LanguageServer):
         super().__init__()
         self._logger = logging.getLogger("yara")
         self.workspace = False
-        self.request_handlers = {}
-        self._route("initialize", self.initialize)
-        self._route("shutdown", self.shutdown)
-        self._route("workspace/executeCommand", self.execute_command)
-        self._route("textDocument/completion", self.provide_code_completion)
-        self._route("textDocument/definition", self.provide_definition)
-        self._route("textDocument/formatting", self.provide_formatting)
-        self._route("textDocument/documentHighlight", self.provide_highlight)
-        self._route("textDocument/hover", self.provide_hover)
-        self._route("textDocument/references", self.provide_reference)
-        self._route("textDocument/rename", self.provide_rename)
-        self.event_handlers = {}
-        self._route("textDocument/didChange", self.event_did_change, request_type=RouteType.EVENT)
-        self._route("textDocument/didClose", self.event_did_close, request_type=RouteType.EVENT)
-        self._route("textDocument/didSave", self.event_did_save, request_type=RouteType.EVENT)
-        self._route("exit", self.event_exit, request_type=RouteType.EVENT)
-        self._route("$/cancelRequest", self.event_cancel, request_type=RouteType.EVENT)
-        self.command_handlers = {}
+        self.route("initialize", self.initialize)
+        self.route("shutdown", self.shutdown)
+        self.route("workspace/executeCommand", self.execute_command)
+        self.route("textDocument/completion", self.provide_code_completion)
+        self.route("textDocument/definition", self.provide_definition)
+        self.route("textDocument/formatting", self.provide_formatting)
+        self.route("textDocument/documentHighlight", self.provide_highlight)
+        self.route("textDocument/hover", self.provide_hover)
+        self.route("textDocument/references", self.provide_reference)
+        self.route("textDocument/rename", self.provide_rename)
+        self.route("textDocument/didChange", self.event_did_change, request_type=RouteType.EVENT)
+        self.route("textDocument/didClose", self.event_did_close, request_type=RouteType.EVENT)
+        self.route("textDocument/didSave", self.event_did_save, request_type=RouteType.EVENT)
+        self.route("exit", self.event_exit, request_type=RouteType.EVENT)
+        self.route("$/cancelRequest", self.event_cancel, request_type=RouteType.EVENT)
 
     def _is_module_installed(self, module_name) -> bool:
         ''' Check if the given module has been installed '''
@@ -73,24 +64,9 @@ class YaraLanguageServer(server.LanguageServer):
         ''' Return the document text for a given file URI either from disk or memory '''
         if file_uri in dirty_files:
             return dirty_files[file_uri]
-        file_path = helpers.parse_uri(file_uri, encoding=self._encoding)
+        file_path = helpers.parse_uri(file_uri, encoding=self.ENCODING)
         with open(file_path, "r") as rule_file:
             return rule_file.read()
-
-    def _route(self, request: str, method, request_type: RouteType=RouteType.FEATURE):
-        '''Route JSON-RPC requests to the appropriate method
-        :request: string. Request type being sent by client
-        :method: function. Method to call when request is encountered
-        :request_type: string. Type of request being handled.
-        '''
-        method_object_name = method.__self__.__class__.__name__
-        logging.debug("Routing '%s' to '%s.%s()'", request, method_object_name, method.__name__)
-        if request_type == RouteType.EVENT:
-            self.event_handlers[request] = method
-        elif request_type == RouteType.COMMAND:
-            self.command_handlers[request] = method
-        elif request_type == RouteType.FEATURE:
-            self.request_handlers[request] = method
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         '''React and respond to client messages
@@ -136,8 +112,8 @@ class YaraLanguageServer(server.LanguageServer):
                                 "dirty_files": dirty_files,
                                 "writer": writer
                             }
-                            task = self.queue_task(message["id"], method, **params)
                             # TODO: Actually run the task and move on instead of waiting for output
+                            task = self.execute_method(message["id"], method, **params)
                             response = await task
                             await self.send_response(message["id"], response, writer)
                         else:
@@ -193,7 +169,7 @@ class YaraLanguageServer(server.LanguageServer):
         '''
         # pylint: disable=W0613
         if not has_started:
-            rootdir = helpers.parse_uri(message["params"]["rootUri"], encoding=self._encoding)
+            rootdir = helpers.parse_uri(message["params"]["rootUri"], encoding=self.ENCODING)
             if rootdir:
                 self.workspace = Path(rootdir)
                 self._logger.info("Client workspace folder: %s", self.workspace)
@@ -243,14 +219,22 @@ class YaraLanguageServer(server.LanguageServer):
     # @_route("$/cancelRequest", request_type=RouteType.EVENT)
     async def event_cancel(self, has_started: bool, **kwargs):
         ''' Ignore cancellation requests for now until I can figure out how to cancel tasks '''
-        if has_started:
-            message = kwargs.pop("message", {})
-            params = message.get("params", {})
-            msg_id = int(params.get("id"))
-            task = self.running_tasks[msg_id]
-            # TODO: figure out the real way to do this
-            # ... I believe I'll just cancel 'event_cancel' every time
-            self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
+        try:
+            if has_started:
+                message = kwargs.pop("message", {})
+                params = message.get("params", {})
+                msg_id = int(params.get("id"))
+                if msg_id in self.running_tasks:
+                    task = self.running_tasks[msg_id]
+                    # TODO: figure out the real way to do this
+                    # ... I believe I'll just cancel 'event_cancel' every time
+                    self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
+                else:
+                    self._logger.debug("Client requested cancellation for message %d, but it is not running", msg_id)
+        except ValueError as err:
+            self._logger.warning("Could not convert message ID to integer: %s", err)
+        except Exception as err:
+            self._logger.warning("Ignoring error that occurred during task cancellation: %s", err)
 
     # @_route("textDocument/didChange", request_type=RouteType.EVENT)
     async def event_did_change(self, has_started: bool, **kwargs):
@@ -301,7 +285,7 @@ class YaraLanguageServer(server.LanguageServer):
             if config.get("compile_on_save", False):
                 file_path = helpers.parse_uri(file_uri)
                 with open(file_path, "rb") as ifile:
-                    document = ifile.read().decode(self._encoding)
+                    document = ifile.read().decode(self.ENCODING)
                 diagnostics = await self.provide_diagnostic(document)
             else:
                 diagnostics = []
@@ -747,21 +731,6 @@ class YaraLanguageServer(server.LanguageServer):
         except Exception as err:
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))
-
-    def queue_task(self, msg_id: int, method: str, **params) -> asyncio.Task:
-        '''Queue an asynchronous task to run
-           Typically, this will be a provider feature, such as a definition or hover
-
-        :msg_id: Current message ID to derive task from
-        :method: Provider method to call, such as 'textDocument/definition'
-        :params: Additional parameters to be passed to the coroutine
-
-        Returns the task that was created and queued
-        '''
-        coroutine = self.request_handlers[method]
-        task = asyncio.create_task(coroutine(**params))
-        self.running_tasks[msg_id] = task
-        return task
 
     # @_route("shutdown")
     async def shutdown(self, message: dict, has_started: bool, **kwargs):
