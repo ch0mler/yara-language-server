@@ -114,7 +114,8 @@ class YaraLanguageServer(LanguageServer):
                             }
                             # TODO: Actually run the task and move on instead of waiting for output
                             task = self.execute_method(message["id"], method, **params)
-                            response = await task
+                            # response = await task
+                            response = None
                             await self.send_response(message["id"], response, writer)
                         else:
                             # TODO: Figure out what else needs to be done when an unknown command is encountered
@@ -266,6 +267,8 @@ class YaraLanguageServer(LanguageServer):
                     # done with diagnostics - nothing needs to be returned
                 else:
                     self._logger.warning("Unknown command: %s [%s]", cmd, ",".join(args))
+        except asyncio.CancelledError as err:
+            raise err
         except (ce.DiagnosticError,) as err:
             # only add an error code if we see one
             response = {
@@ -339,6 +342,8 @@ class YaraLanguageServer(LanguageServer):
                         else:
                             schema = schema[symbol]
                 return results
+        except asyncio.CancelledError as err:
+            raise err
         except Exception as err:
             self._logger.error(err)
             raise ce.CodeCompletionError("Could not offer completion items: {}".format(err))
@@ -396,6 +401,8 @@ class YaraLanguageServer(LanguageServer):
             except re.error:
                 self._logger.debug("Error building regex pattern: %s", pattern)
                 return []
+        except asyncio.CancelledError as err:
+            raise err
         except Exception as err:
             self._logger.error(err)
             if symbol:
@@ -446,6 +453,8 @@ class YaraLanguageServer(LanguageServer):
                         message=msg
                     )
                 )
+            except asyncio.CancelledError as err:
+                raise err
             except Exception as err:
                 self._logger.error(err)
                 raise ce.DiagnosticError("Could not compile rule: {}".format(err))
@@ -514,6 +523,8 @@ class YaraLanguageServer(LanguageServer):
                             end=lsp.Position(line=rule["stop_line"]-1, char=self.MAX_LINE)
                         )
                         edits.append(lsp.TextEdit(document_range, formatted_text))
+            except asyncio.CancelledError as err:
+                raise err
             except plyara.exceptions.ParseTypeError as err:
                 writer = kwargs.pop("writer")
                 msg = "Could not format {} due to parsing error: {}".format(file_uri, err)
@@ -541,6 +552,8 @@ class YaraLanguageServer(LanguageServer):
                 # TODO: Add document highlighting
                 self._logger.warning("provide_highlight() is not implemented")
                 return results
+        except asyncio.CancelledError as err:
+            raise err
         except Exception as err:
             self._logger.error(err)
             raise ce.HighlightError("Could not offer code highlighting: {}".format(err))
@@ -567,6 +580,8 @@ class YaraLanguageServer(LanguageServer):
                     except IndexError as err:
                         self._logger.warning(words)
                         self._logger.warning("IndexError at line %d: '%s'", definition.range.start.line, line)
+        except asyncio.CancelledError as err:
+            raise err
         except Exception as err:
             self._logger.error(err)
             raise ce.HoverError("Could not offer definition hover: {}".format(err))
@@ -628,6 +643,8 @@ class YaraLanguageServer(LanguageServer):
                             )
                             results.append(lsp.Location(locrange, file_uri))
                 return results
+        except asyncio.CancelledError as err:
+            raise err
         except re.error:
             self._logger.debug("Error building regex pattern: %s", pattern)
             return []
@@ -668,6 +685,8 @@ class YaraLanguageServer(LanguageServer):
                 if len(results.changes) <= 0:
                     self._logger.warning("No symbol references found to rename. Skipping")
                 return results
+        except asyncio.CancelledError as err:
+            raise err
         except Exception as err:
             self._logger.error(err)
             raise ce.RenameError("Could not rename symbol: {}".format(err))

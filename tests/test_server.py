@@ -45,8 +45,7 @@ async def test_cancel(initialize_msg, initialized_msg, open_streams, test_rules,
         }
     }
     await yara_server.write_data(json.dumps(message), writer)
-    response = await yara_server.read_request(reader)
-    print(response)
+    await yara_server.read_request(reader)
     # cancel that task
     cancel = {
         "jsonrpc": "2.0",

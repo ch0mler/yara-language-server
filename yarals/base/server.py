@@ -86,11 +86,11 @@ class LanguageServer():
                 msg_id = int(params.get("id"))
                 if msg_id in self.running_tasks:
                     task = self.running_tasks[msg_id]
-                    # TODO: figure out the real way to do this
-                    # ... I believe I'll just cancel 'event_cancel' every time
-                    self._logger.debug("Client requested cancellation for message %d => %s", msg_id, task)
+                    task_name = "Task-{:d}".format(msg_id)
+                    self._logger.debug("Client requested cancellation for %s", task_name)
+                    task.cancel()
                 else:
-                    self._logger.debug("Client requested cancellation for message %d, but it is not running", msg_id)
+                    self._logger.debug("Client requested cancellation for %s, but it is not running", task_name)
         except ValueError as err:
             self._logger.warning("Could not convert message ID to integer: %s", err)
         except Exception as err:
@@ -174,20 +174,22 @@ class LanguageServer():
 
     def resolve_tasks(self):
         ''' Remove cancelled or finished tasks from the running tasks list '''
-        self._logger.debug("running tasks before cleanup: %s", self.running_tasks)
         completed_tasks = []
         for msg_id, task in self.running_tasks.items():
+            task_name = "Task-{:d}".format(msg_id)
             if task.done():
-                self._logger.debug("Task %s has finished. Removing from running tasks", task)
+                self._logger.debug("%s has finished. Removing from running tasks", task_name)
+                response = task.result()
+                self._logger.debug("response to %s", response)
+                # await self.send_response(message["id"], response, writer)
                 completed_tasks.append(msg_id)
             elif task.cancelled():
-                self._logger.debug("Task %s has been cancelled. Removing from running tasks", task)
+                self._logger.debug("%s has been cancelled. Removing from running tasks", task_name)
                 completed_tasks.append(msg_id)
             else:
-                self._logger.debug("Task %s is still running. Doing nothing", task)
+                self._logger.debug("%s is still running. Doing nothing", task_name)
         for msg_id in completed_tasks:
             del self.running_tasks[msg_id]
-        self._logger.debug("running tasks after cleanup: %s", self.running_tasks)
 
     def route(self, request: str, method, request_type: RouteType=RouteType.FEATURE):
         '''Route JSON-RPC requests to the appropriate method
@@ -235,7 +237,6 @@ class LanguageServer():
         }, cls=lsp.JSONEncoder)
         await self.write_data(message, writer)
 
-    # @self.route("shutdown")
     async def shutdown(self, message: dict, has_started: bool, **kwargs):
         '''Shut down the server, clear all unsaved, tracked files,
         and notify client to begin exiting
