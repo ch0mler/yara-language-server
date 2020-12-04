@@ -235,6 +235,19 @@ class LanguageServer():
         }, cls=lsp.JSONEncoder)
         await self.write_data(message, writer)
 
+    # @self.route("shutdown")
+    async def shutdown(self, message: dict, has_started: bool, **kwargs):
+        '''Shut down the server, clear all unsaved, tracked files,
+        and notify client to begin exiting
+        '''
+        if has_started:
+            self._logger.info("Client requested shutdown")
+            dirty_files = kwargs.pop("dirty_files", {})
+            writer = kwargs.pop("writer")
+            await self.send_response(message["id"], {}, writer)
+            # explicitly clear the dirty files on shutdown
+            dirty_files.clear()
+
     async def write_data(self, message: str, writer: asyncio.StreamWriter):
         ''' Write a JSON-RPC message to the given stream with the proper encoding and formatting '''
         self._logger.debug("output => %r", message.encode(self.ENCODING))
