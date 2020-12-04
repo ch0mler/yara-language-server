@@ -114,8 +114,7 @@ class YaraLanguageServer(LanguageServer):
                             }
                             # TODO: Actually run the task and move on instead of waiting for output
                             task = self.execute_method(message["id"], method, **params)
-                            # response = await task
-                            response = None
+                            response = await task
                             await self.send_response(message["id"], response, writer)
                         else:
                             # TODO: Figure out what else needs to be done when an unknown command is encountered
