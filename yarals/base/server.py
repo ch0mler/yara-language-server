@@ -26,7 +26,6 @@ class LanguageServer():
     ENCODING = "utf-8"
     EOL=b"\r\n"
     MAX_LINE = 10000
-    TASK_TIMEOUT = 2.0
 
     def __init__(self):
         ''' Handle the details of the Language Server Protocol '''
@@ -127,19 +126,6 @@ class LanguageServer():
             writer = kwargs.pop("writer")
             await self.remove_client(writer)
             raise ce.ServerExit("Server exiting process per client request")
-
-    async def execute_method(self, method: str, **params) -> Union[Dict, List]:
-        '''Execute a method, such as a definiton or hover provider, as an asynchronous task
-           and return its output or cancel if it is not completed within self.task_timeout seconds
-
-        :method: Provider method to call, such as 'textDocument/definition'
-        :params: Additional parameters to be passed to the coroutine
-
-        Returns the task that was created and queued
-        '''
-        coroutine = self.request_handlers[method]
-        response = await asyncio.wait_for(coroutine(**params), self.TASK_TIMEOUT)
-        return response
 
     async def read_request(self, reader: asyncio.StreamReader) -> dict:
         ''' Read data from the client '''

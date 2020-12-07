@@ -24,6 +24,7 @@ class YaraLanguageServer(LanguageServer):
     _varchar = ["$", "#", "@", "!"]
     hover_langs = [lsp.MarkupKind.Markdown, lsp.MarkupKind.Plaintext]
     modules = json.loads(SCHEMA.read_text())
+    TASK_TIMEOUT = 2.0
 
     def __init__(self):
         ''' Handle the particulars of the server's YARA implementation '''
@@ -100,29 +101,12 @@ class YaraLanguageServer(LanguageServer):
                     self._logger.debug("Client sent a '%s' message", method)
                     # if an id is present, this is a JSON-RPC request
                     if "id" in message:
-                        # trying to generically handle JSON-RPC requests
-                        # by sending the full request message to each method
-                        if method in self.request_handlers:
-                            # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
-                            params = {
-                                "message": message,
-                                "has_started": has_started,
-                                "dirty_files": dirty_files,
-                                "writer": writer
-                            }
-                            try:
-                                response = await self.execute_method(method, **params)
-                                # if the method is either of these, the writer has been closed
-                                # ... and the client is not reading messages anymore
-                                if method not in ("shutdown", "exit"):
-                                    await self.send_response(message["id"], response, writer)
-                            except asyncio.exceptions.TimeoutError as err:
-                                self._logger.warning("Task for message %d timed out! %s", message["id"], message)
-                                # always need to send a response to requests, even if it's just null
-                                await self.send_response(message["id"], None, writer)
-                        else:
-                            self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
-                            await self.send_response(message["id"], None, writer)
+                        # TODO: Only send writer to functions that want it OR rewrite functions to not use writer
+                        params = {
+                            "has_started": has_started,
+                            "dirty_files": dirty_files
+                        }
+                        await self.execute_method(method, message, writer, **params)
                     # if no id is present, this is a JSON-RPC notification
                     else:
                         if method in self.event_handlers:
@@ -277,6 +261,34 @@ class YaraLanguageServer(LanguageServer):
                 "error": lsp.ResponseError.convert_exception(err)
             }
         return response
+
+    async def execute_method(self, method: str, message: dict, writer: asyncio.StreamWriter, **params):
+        '''Execute a method, such as a definiton or hover provider, as an asynchronous task
+           and write back a response to the client or cancel if it is not completed within self.TASK_TIMEOUT seconds
+
+        :method: Provider method to call, such as 'textDocument/definition'
+        :message: Message from client to parse and execute
+        :writer: Transport stream to write responses to
+        :params: Additional parameters to be passed to the coroutine
+        '''
+        try:
+            msg_id = message.get("id")
+            # trying to generically handle JSON-RPC requests
+            # by sending the full request message to each method
+            if int(msg_id) >= 0 and method in self.request_handlers:
+                coroutine = self.request_handlers[method]
+                response = await asyncio.wait_for(coroutine(message=message, writer=writer, **params), self.TASK_TIMEOUT)
+                # if the method is either of these, the writer has been closed
+                # ... and the client is not reading messages anymore
+                if method not in ("shutdown", "exit"):
+                    await self.send_response(msg_id, response, writer)
+            else:
+                self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
+                await self.send_response(msg_id, None, writer)
+        except asyncio.exceptions.TimeoutError:
+            self._logger.warning("Task for message %d timed out! %s", msg_id, message)
+            # always need to send a response to requests, even if it's just null
+            await self.send_response(msg_id, None, writer)
 
     # @self.route("yara.CompileAllRules", request_type=RouteType.COMMAND)
     async def _compile_all_rules(self, dirty_files: dict, workspace=None) -> list:
