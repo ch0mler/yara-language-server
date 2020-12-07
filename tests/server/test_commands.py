@@ -4,7 +4,6 @@ import json
 import pytest
 from yarals import helpers
 from yarals.base import protocol
-from yarals.base import errors as ce
 
 # don't care about pylint(protected-access) warnings since these are just tests
 # pylint: disable=W0212
