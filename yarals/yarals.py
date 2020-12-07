@@ -688,10 +688,8 @@ class YaraLanguageServer(LanguageServer):
                 # and therefore what scope to look into
                 refs = await self.provide_reference(message, has_started, dirty_files=dirty_files)
                 for ref in refs:
-                    # need to add one character to the position so the variable
-                    # type is not overwritten
                     new_range = lsp.Range(
-                        lsp.Position(ref.range.start.line, ref.range.start.char+1),
+                        lsp.Position(ref.range.start.line, ref.range.start.char),
                         lsp.Position(ref.range.end.line, ref.range.end.char)
                     )
                     results.append(lsp.TextEdit(new_range, new_text))

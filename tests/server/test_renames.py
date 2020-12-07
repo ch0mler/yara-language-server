@@ -7,15 +7,6 @@ from yarals.base import errors as ce
 # don't care about pylint(protected-access) warnings since these are just tests
 # pylint: disable=W0212
 
-try:
-    # asyncio exceptions changed from 3.6 > 3.7 > 3.8
-    # so try to keep this compatible regardless of Python version 3.6+
-    # https://medium.com/@jflevesque/asyncio-exceptions-changes-from-python-3-6-to-3-7-to-3-8-cancellederror-timeouterror-f79945ead378
-    from asyncio.exceptions import CancelledError
-except ImportError:
-    from concurrent.futures import CancelledError
-
-
 
 @pytest.mark.asyncio
 async def test_renames(test_rules, yara_server):
@@ -34,9 +25,9 @@ async def test_renames(test_rules, yara_server):
     result = await yara_server.provide_rename(message, True)
     assert isinstance(result, protocol.WorkspaceEdit) is True
     assert len(result.changes) == 3
-    acceptable_lines = [21, 28, 29]
-    for edit in result.changes:
-        assert isinstance(edit, protocol.TextEdit) is True
-        assert edit.newText == new_text
-        assert edit.range.start.line in acceptable_lines
-        # TODO: check that the character indexes are correct
+    expected = protocol.WorkspaceEdit(file_uri, changes=[
+        protocol.TextEdit(protocol.Range(protocol.Position(line=21, char=9), protocol.Position(line=21, char=16)), newText=new_text),
+        protocol.TextEdit(protocol.Range(protocol.Position(line=28, char=9), protocol.Position(line=28, char=16)), newText=new_text),
+        protocol.TextEdit(protocol.Range(protocol.Position(line=29, char=9), protocol.Position(line=29, char=16)), newText=new_text),
+    ])
+    assert result == expected
