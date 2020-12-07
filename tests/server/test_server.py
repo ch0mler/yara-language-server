@@ -246,3 +246,36 @@ async def test_shutdown(caplog, initialize_msg, initialized_msg, open_streams, s
         assert ("yara", logging.INFO, "Client requested shutdown") in caplog.record_tuples
     writer.close()
     await writer.wait_closed()
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_task_timeout(caplog, initialize_msg, initialized_msg, open_streams, test_rules, yara_server):
+    ''' Ensure a task will cancel itself if it is taking too long '''
+    # set a constant for the server's timeout period
+    yara_server.TASK_TIMEOUT = 0.0
+    # initialize the server
+    reader, writer = open_streams
+    with caplog.at_level(logging.DEBUG, "yara"):
+        await yara_server.write_data(initialize_msg, writer)
+        await yara_server.read_request(reader)
+        await yara_server.write_data(initialized_msg, writer)
+        await yara_server.read_request(reader)
+        # execute a task that shouldn't complete on its own
+        alienspy = str(test_rules.joinpath("apt_alienspy_rat.yar").resolve())
+        file_uri = helpers.create_file_uri(alienspy)
+        msg_id = 1
+        message = {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {"uri": file_uri},
+                "position": {"line": 38, "character": 15}
+            }
+        }
+        await yara_server.write_data(json.dumps(message), writer)
+        response = await yara_server.read_request(reader)
+        expected = {"jsonrpc": "2.0", "id": msg_id, "result": None}
+        expected_log = "Task for message {:d} timed out! {}".format(msg_id, message)
+        assert ("yara", logging.WARNING, expected_log) in caplog.record_tuples
+        assert response == expected
