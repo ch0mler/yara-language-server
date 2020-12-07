@@ -6,6 +6,7 @@ import asyncio
 from enum import IntEnum
 import json
 import logging
+from typing import Dict, List, Union
 
 from . import errors as ce
 from . import protocol as lsp
@@ -25,6 +26,7 @@ class LanguageServer():
     ENCODING = "utf-8"
     EOL=b"\r\n"
     MAX_LINE = 10000
+    TASK_TIMEOUT = 2.0
 
     def __init__(self):
         ''' Handle the details of the Language Server Protocol '''
@@ -34,7 +36,6 @@ class LanguageServer():
         self.command_handlers = {}
         self.event_handlers = {}
         self.request_handlers = {}
-        self.running_tasks = {}
 
     def _exc_handler(self, loop, context: dict):
         ''' Appropriately handle exceptions '''
@@ -70,13 +71,8 @@ class LanguageServer():
                 message = kwargs.pop("message", {})
                 params = message.get("params", {})
                 msg_id = int(params.get("id"))
-                if msg_id in self.running_tasks:
-                    task = self.running_tasks[msg_id]
-                    task_name = "Message-{:d}".format(msg_id)
-                    self._logger.debug("Client requested cancellation for %s", task_name)
-                    task.cancel()
-                else:
-                    self._logger.debug("Client requested cancellation for %s, but it is not running", task_name)
+                task_name = "Message-{:d}".format(msg_id)
+                self._logger.debug("Client requested cancellation for %s", task_name)
         except ValueError as err:
             self._logger.warning("Could not convert message ID to integer: %s", err)
         except Exception as err:
@@ -132,19 +128,18 @@ class LanguageServer():
             await self.remove_client(writer)
             raise ce.ServerExit("Server exiting process per client request")
 
-    def execute_method(self, msg_id: int, method: str, **params) -> asyncio.Task:
+    async def execute_method(self, method: str, **params) -> Union[Dict, List]:
         '''Execute a method, such as a definiton or hover provider, as an asynchronous task
+           and return its output or cancel if it is not completed within self.task_timeout seconds
 
-        :msg_id: JSON-RPC message ID to map task to
         :method: Provider method to call, such as 'textDocument/definition'
         :params: Additional parameters to be passed to the coroutine
 
         Returns the task that was created and queued
         '''
         coroutine = self.request_handlers[method]
-        task = asyncio.create_task(coroutine(**params))
-        self.running_tasks[msg_id] = task
-        return task
+        response = await asyncio.wait_for(coroutine(**params), self.TASK_TIMEOUT)
+        return response
 
     async def read_request(self, reader: asyncio.StreamReader) -> dict:
         ''' Read data from the client '''
@@ -171,24 +166,6 @@ class LanguageServer():
         writer.close()
         await writer.wait_closed()
         self._logger.info("Disconnected client")
-
-    def resolve_tasks(self):
-        ''' Remove cancelled or finished tasks from the running tasks list '''
-        completed_tasks = []
-        for msg_id, task in self.running_tasks.items():
-            task_name = "Message-{:d}".format(msg_id)
-            if task.done():
-                self._logger.debug("%s has finished. Removing from running tasks", task_name)
-                response = task.result()
-                self._logger.debug("response to %s", response)
-                completed_tasks.append(msg_id)
-            elif task.cancelled():
-                self._logger.debug("%s has been cancelled. Removing from running tasks", task_name)
-                completed_tasks.append(msg_id)
-            else:
-                self._logger.debug("%s is still running. Doing nothing", task_name)
-        for msg_id in completed_tasks:
-            del self.running_tasks[msg_id]
 
     def route(self, request: str, method, request_type: RouteType=RouteType.FEATURE):
         '''Route JSON-RPC requests to the appropriate method

@@ -92,8 +92,6 @@ class YaraLanguageServer(LanguageServer):
                     dirty_files.clear()
                     # remove connected clients
                     await self.remove_client(writer)
-                # then clean up completed/cancelled tasks
-                self.resolve_tasks()
                 # finally read our data
                 message = await self.read_request(reader)
                 # this matches some kind of JSON-RPC message
@@ -112,20 +110,25 @@ class YaraLanguageServer(LanguageServer):
                                 "dirty_files": dirty_files,
                                 "writer": writer
                             }
-                            # TODO: Actually run the task and move on instead of waiting for output
-                            task = self.execute_method(message["id"], method, **params)
-                            response = await task
-                            await self.send_response(message["id"], response, writer)
+                            try:
+                                response = await self.execute_method(method, **params)
+                                # if the method is either of these, the writer has been closed
+                                # ... and the client is not reading messages anymore
+                                if method not in ("shutdown", "exit"):
+                                    await self.send_response(message["id"], response, writer)
+                            except asyncio.exceptions.TimeoutError as err:
+                                self._logger.warning("Task for message %d timed out! %s", message["id"], message)
+                                # always need to send a response to requests, even if it's just null
+                                await self.send_response(message["id"], None, writer)
                         else:
-                            # TODO: Figure out what else needs to be done when an unknown command is encountered
                             self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
+                            await self.send_response(message["id"], None, writer)
                     # if no id is present, this is a JSON-RPC notification
                     else:
                         if method in self.event_handlers:
                             # TODO: Only send writer to event handlers that want it OR rewrite handlers to not use writer
                             await self.event_handlers[method](has_started, message=message, config=config, dirty_files=dirty_files, writer=writer)
                         elif not has_started and method == "initialized":
-                            # TODO: Track each client has_started alongside client (StreamWriter) object
                             # special type of event that just confirms response to 'initialize' request
                             # ... local variable has_started needs to be modified in this function's context,
                             # ... so it's easier to handle here instead of spinning it off to its own handler
@@ -134,7 +137,6 @@ class YaraLanguageServer(LanguageServer):
                             params = {"type": lsp.MessageType.INFO, "message": "Successfully connected"}
                             await self.send_notification("window/showMessageRequest", params, writer)
                         elif has_started and method == "workspace/didChangeConfiguration":
-                            # TODO: Track each client config alongside client (StreamWriter) object
                             # special type of event that modifies the client's tracked configuration
                             # ... local variable config needs to be modified in this function's context,
                             # ... so it's easier to handle here instead of spinning it off to its own handler
