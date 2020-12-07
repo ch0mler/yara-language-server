@@ -6,7 +6,6 @@ import asyncio
 from enum import IntEnum
 import json
 import logging
-from typing import Dict, List, Union
 
 from . import errors as ce
 from . import protocol as lsp
