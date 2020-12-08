@@ -1,6 +1,4 @@
 ''' Format Provider Tests '''
-import subprocess
-import sys
 from textwrap import dedent
 
 import pytest
@@ -215,7 +213,7 @@ async def test_format_keep_newlines(test_rules, yara_server):
         assert edit.newText == expected
 
 @pytest.mark.asyncio
-async def test_format_notify_user(test_rules, yara_server):
+async def test_format_notify_user(test_rules, uninstall_pkg, yara_server):
     ''' Ensure the formatter notifies the user if plyara is not installed '''
     expected_msg = "plyara is not installed. Formatting is disabled"
     oneline = str(test_rules.joinpath("oneline.yar").resolve())
@@ -226,10 +224,7 @@ async def test_format_notify_user(test_rules, yara_server):
             "position": {"line": 29, "character": 12}
         }
     }
-    try:
-        with pytest.raises(ce.NoDependencyFound) as excinfo:
-            subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "plyara"])
-            await yara_server.provide_formatting(message, True)
-        assert expected_msg == str(excinfo.value)
-    finally:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "plyara"])
+    await uninstall_pkg("plyara")
+    with pytest.raises(ce.NoDependencyFound) as excinfo:
+        await yara_server.provide_formatting(message, True)
+    assert expected_msg == str(excinfo.value)

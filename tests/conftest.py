@@ -2,6 +2,7 @@
 import asyncio
 import json
 from pathlib import Path
+from sys import executable as python_path
 
 import pytest
 from yarals import yarals
@@ -96,3 +97,17 @@ def format_options():
         "insertFinalNewline": False,
         "trimFinalNewlines": True
     }
+
+@pytest.fixture(scope="function")
+async def uninstall_pkg():
+    ''' Uninstall the given Python package before running a test, then reinstall when test is finished '''
+    module = None
+    async def _uninstall_pkg(pkg):
+        nonlocal module
+        module = pkg
+        proc = await asyncio.create_subprocess_shell(" ".join([python_path, "-m", "pip", "uninstall", "-y", pkg]))
+        await proc.communicate()
+    yield _uninstall_pkg
+    if module:
+        proc = await asyncio.create_subprocess_shell(" ".join([python_path, "-m", "pip", "install", module]))
+        await proc.communicate()

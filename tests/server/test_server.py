@@ -1,8 +1,6 @@
 ''' General YaraLanguageServer Tests '''
 import json
 import logging
-import subprocess
-import sys
 
 import pytest
 from yarals import helpers
@@ -157,7 +155,7 @@ async def test_initialize(initialize_msg, initialized_msg, open_streams, yara_se
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_streams, yara_server):
+async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_streams, uninstall_pkg, yara_server):
     '''Ensure server responds with appropriate initialization handshake without plyara installed
 
         Note: The formatter command should always be enabled by the server,
@@ -177,23 +175,20 @@ async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_s
         "jsonrpc": "2.0", "method": "window/showMessageRequest",
         "params": {"type": 3, "message": "Successfully connected"}
     }
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "plyara"])
-        reader, writer = open_streams
-        await yara_server.write_data(initialize_msg, writer)
-        response = await yara_server.read_request(reader)
-        assert response == expected_initialize
-        await yara_server.write_data(initialized_msg, writer)
-        response = await yara_server.read_request(reader)
-        assert response == expected_initialized
-        writer.close()
-        await writer.wait_closed()
-    finally:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "plyara"])
+    await uninstall_pkg("plyara")
+    reader, writer = open_streams
+    await yara_server.write_data(initialize_msg, writer)
+    response = await yara_server.read_request(reader)
+    assert response == expected_initialize
+    await yara_server.write_data(initialized_msg, writer)
+    response = await yara_server.read_request(reader)
+    writer.close()
+    await writer.wait_closed()
+    assert response == expected_initialized
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_initialize_without_yara(initialize_msg, initialized_msg, open_streams, yara_server):
+async def test_initialize_without_yara(initialize_msg, initialized_msg, open_streams, uninstall_pkg, yara_server):
     ''' Ensure server responds with appropriate initialization handshake without yara-python installed '''
     expected_initialize = {
         "jsonrpc": "2.0", "id": 0, "result":{
@@ -209,19 +204,16 @@ async def test_initialize_without_yara(initialize_msg, initialized_msg, open_str
         "jsonrpc": "2.0", "method": "window/showMessageRequest",
         "params": {"type": 3, "message": "Successfully connected"}
     }
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "yara-python"])
-        reader, writer = open_streams
-        await yara_server.write_data(initialize_msg, writer)
-        response = await yara_server.read_request(reader)
-        assert response == expected_initialize
-        await yara_server.write_data(initialized_msg, writer)
-        response = await yara_server.read_request(reader)
-        assert response == expected_initialized
-        writer.close()
-        await writer.wait_closed()
-    finally:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "yara-python"])
+    await uninstall_pkg("yara-python")
+    reader, writer = open_streams
+    await yara_server.write_data(initialize_msg, writer)
+    response = await yara_server.read_request(reader)
+    assert response == expected_initialize
+    await yara_server.write_data(initialized_msg, writer)
+    response = await yara_server.read_request(reader)
+    writer.close()
+    await writer.wait_closed()
+    assert response == expected_initialized
 
 @pytest.mark.asyncio
 def test__is_module_installed(yara_server):

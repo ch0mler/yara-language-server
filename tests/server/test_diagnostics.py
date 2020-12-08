@@ -1,7 +1,4 @@
 ''' Diagnostic Tests '''
-import subprocess
-import sys
-
 import pytest
 from yarals import helpers
 from yarals.base import protocol
@@ -32,14 +29,11 @@ async def test_diagnostics_no_results(yara_server):
     assert result == []
 
 @pytest.mark.asyncio
-async def test_diagnostics_notify_user(yara_server):
+async def test_diagnostics_notify_user(uninstall_pkg, yara_server):
     ''' Ensure the diagnostics notify the user if yara-python is not installed '''
     expected_msg = "yara-python is not installed. Diagnostics and Compile commands are disabled"
     document = "rule NotifyUserDiagnostic { condition: $true }"
-    try:
-        with pytest.raises(ce.NoDependencyFound) as excinfo:
-            subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "yara-python"])
-            await yara_server.provide_diagnostic(document)
-        assert expected_msg == str(excinfo.value)
-    finally:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "yara-python"])
+    await uninstall_pkg("yara-python")
+    with pytest.raises(ce.NoDependencyFound) as excinfo:
+        await yara_server.provide_diagnostic(document)
+    assert expected_msg == str(excinfo.value)
