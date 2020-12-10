@@ -4,7 +4,7 @@ For more info: https://microsoft.github.io/language-server-protocol/specificatio
 '''
 from enum import Enum, IntEnum
 import json
-from typing import List
+from typing import Any, List, Optional
 
 from . import errors as ce
 
@@ -148,7 +148,7 @@ class CompletionItem():
         return "<CompletionItem(label={}, kind={:d})>".format(self.label, self.kind)
 
 class Diagnostic():
-    def __init__(self, locrange: Range, severity: int, message: str, relatedInformation: list=[]):
+    def __init__(self, locrange: Range, severity: int, message: str, relatedInformation: Optional[List]=None):
         ''' Represents a diagnostic, such as a compiler error or warning
 
         Diagnostic objects are only valid in the scope of a resource.
@@ -157,6 +157,8 @@ class Diagnostic():
         if not isinstance(locrange, Range):
             raise TypeError("Location range cannot be {}. Must be Range".format(type(locrange)))
         self.range = locrange
+        if relatedInformation is None:
+            relatedInformation = []
         if not isinstance(relatedInformation, list):
             raise TypeError("Location range cannot be {}. Must be a list of strings".format(type(relatedInformation)))
         # pylint: disable=C0103
@@ -211,9 +213,7 @@ class Location():
 
 class MarkupContent():
     def __init__(self, kind: MarkupKind, content: str):
-        ''' Represents a string value which content
-        is interpreted base on its kind flag
-        '''
+        ''' Represents a string value which content is interpreted base on its kind flag '''
         if not isinstance(kind, MarkupKind):
             raise TypeError("Markup kind cannot be {}. Must be MarkupKind".format(type(kind)))
         self.kind = kind
@@ -235,10 +235,8 @@ class MarkupContent():
         return "<MarkupContent(value={}, kind={:d})>".format(self.value, self.kind)
 
 class Hover():
-    def __init__(self, contents: MarkupContent, locrange: Range=None):
-        ''' Represents hover information at
-        a given text document position
-        '''
+    def __init__(self, contents: MarkupContent, locrange: Optional[Range]=None):
+        ''' Represents hover information at a given text document position '''
         if locrange:
             if not isinstance(locrange, Range):
                 raise TypeError("Location range cannot be {}. Must be Range".format(type(locrange)))
@@ -260,13 +258,8 @@ class Hover():
             return True
 
 class ResponseError():
-    ''' The error object in case a request fails '''
-    def __init__(self, code: int, message: str, data=None):
-        '''
-        :code: A number indicating the error type that occurred (Check JsonRPCError for valid codes).
-        :message: A string providing a short description of the error.
-        :data: A primitive or structured value that contains additional information about the error. Can be omitted.
-        '''
+    def __init__(self, code: int, message: str, data: Optional[Any]=None):
+        ''' The error object in case a request fails '''
         self.code = code
         self.message = message
         self.data = data
@@ -304,13 +297,14 @@ class ResponseError():
         return "<ResponseError(code={:d}, message={})>".format(self.code, self.message)
 
 class TextEdit():
-    ''' A textual edit applicable to a text document. '''
     def __init__(self, locrange: Range, newText: str):
+        ''' A textual edit applicable to a text document. '''
         if not isinstance(locrange, Range):
             raise TypeError("Location range cannot be {}. Must be Range".format(type(locrange)))
         self.range = locrange
         if not isinstance(newText, str):
             raise TypeError("NewText cannot be {}. Must be a plaintext string".format(type(newText)))
+        # pylint: disable=C0103
         self.newText = newText
 
     def __eq__(self, other) -> bool:
@@ -329,7 +323,7 @@ class TextEdit():
         return "<TextEdit(newText={})>".format(self.newText)
 
 class WorkspaceEdit():
-    def __init__(self, file_uri, changes: List=None):
+    def __init__(self, file_uri, changes: Optional[List]=None):
         '''Represents changes to many resources
         managed in the workspace
 
@@ -337,6 +331,8 @@ class WorkspaceEdit():
         use the .append() and .remove() methods to
         modify the workspace changes
         '''
+        if changes is None:
+            changes = []
         if not isinstance(changes, list):
             raise TypeError("Changes cannot be {}. Must be a list of TextEdits".format(type(changes)))
         self.changes = changes if changes is not None else []
