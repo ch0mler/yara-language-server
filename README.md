@@ -14,13 +14,21 @@ The extension will compile workspace rules in the background and return errors a
 
 Allows peeking and Ctrl+clicking to jump to a rule definition. This applies to both rule names and variables.
 
+### Hover Provider
+
+Allows viewing a string's value by hovering over it in the condition rule. Does not work for wildcards.
+
+### Formatter Provider
+
+Reformats YARA rules using the [plyara](https://github.com/plyara/plyara) library.
+
 ### Reference Provider
 
 Shows the locations of a given symbol (rule name, variable, constant, etc.).
 
 ### Code Completion
 
-Provides completion suggestions for standard YARA modules, including `pe`, `elf`, `math`, and all the others available in the official documentation: http://yara.readthedocs.io/en/v3.7.0/modules.html
+Provides completion suggestions for standard YARA modules, including `pe`, `elf`, `math`, and all the others available in the official documentation: http://yara.readthedocs.io/en/latest/modules.html
 
 ## Requirements
 Python 3.7 or higher is required due to the heavy use of the `asyncio` library and specific APIs available only since v3.7.
