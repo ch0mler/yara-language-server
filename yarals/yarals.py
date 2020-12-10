@@ -145,7 +145,6 @@ class YaraLanguageServer(LanguageServer):
                 }
                 await self.send_notification("window/showMessage", params, writer)
 
-    # @self.route("initialize")
     async def initialize(self, message: dict, has_started: bool, **kwargs) -> dict:
         '''Announce language support methods
 
@@ -230,7 +229,6 @@ class YaraLanguageServer(LanguageServer):
             }
             await self.send_notification("textDocument/publishDiagnostics", params, writer)
 
-    # @self.route("workspace/executeCommand")
     async def execute_command(self, message: dict, has_started: bool, **kwargs) -> dict:
         '''Execute the specified command
 
@@ -315,7 +313,6 @@ class YaraLanguageServer(LanguageServer):
                 })
         return diagnostics
 
-    # @self.route("textDocument/completion")
     async def provide_code_completion(self, message: dict, has_started: bool, **kwargs) -> list:
         '''Respond to the completionItem/resolve request
 
@@ -361,7 +358,6 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.CodeCompletionError("Could not offer completion items: {}".format(err))
 
-    # @self.route("textDocument/definition")
     async def provide_definition(self, message: dict, has_started: bool, **kwargs) -> list:
         '''Respond to the textDocument/definition request
 
@@ -475,7 +471,6 @@ class YaraLanguageServer(LanguageServer):
             raise ce.NoDependencyFound("yara-python is not installed. Diagnostics and Compile commands are disabled")
         return diagnostics
 
-    # @self.route("textDocument/formatting")
     async def provide_formatting(self, message: dict, has_started: bool, **kwargs) -> list:
         '''Respond to the textDocument/formatting request
 
@@ -553,7 +548,6 @@ class YaraLanguageServer(LanguageServer):
             raise ce.NoDependencyFound("plyara is not installed. Formatting is disabled")
         return edits
 
-    # @self.route("textDocument/highlight")
     async def provide_highlight(self, message: dict, has_started: bool, **kwargs) -> list:
         ''' Respond to the textDocument/documentHighlight request '''
         # pylint: disable=W0613
@@ -571,7 +565,6 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.HighlightError("Could not offer code highlighting: {}".format(err))
 
-    # @self.route("textDocument/hover")
     async def provide_hover(self, message: dict, has_started: bool, **kwargs) -> lsp.Hover:
         ''' Respond to the textDocument/hover request '''
         try:
@@ -599,7 +592,6 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.HoverError("Could not offer definition hover: {}".format(err))
 
-    # @self.route("textDocument/references")
     async def provide_reference(self, message: dict, has_started: bool, **kwargs) -> list:
         '''The references request is sent from the client to the server to resolve
         project-wide references for the symbol denoted by the given text document position
@@ -665,7 +657,6 @@ class YaraLanguageServer(LanguageServer):
             self._logger.error(err)
             raise ce.SymbolReferenceError("Could not find references for '{}': {}".format(symbol, err))
 
-    # @self.route("textDocument/rename")
     async def provide_rename(self, message: dict, has_started: bool, **kwargs) -> list:
         ''' Respond to the textDocument/rename request '''
         try:
