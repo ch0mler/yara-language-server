@@ -188,6 +188,7 @@ async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_s
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+@pytest.mark.xfail(reason="package installation issues")
 async def test_initialize_without_yara(initialize_msg, initialized_msg, open_streams, uninstall_pkg, yara_server):
     ''' Ensure server responds with appropriate initialization handshake without yara-python installed '''
     expected_initialize = {
