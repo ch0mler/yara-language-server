@@ -128,23 +128,26 @@ class Range():
         return "<Range(start={}, end={})>".format(self.start, self.end)
 
 class CompletionItem():
-    def __init__(self, label: str, kind: CompletionItemKind=CompletionItemKind.CLASS, insertText: Optional[str]=None):
+    def __init__(self, label: str, kind: CompletionItemKind=CompletionItemKind.CLASS, detail: Optional[str]=None, insertText: Optional[str]=None):
         ''' Suggested items for the user '''
         self.label = str(label)
         self.kind = int(kind)
         # default to using the label as the insertion text, otherwise use provided snippet string
         # pylint: disable=C0103
         self.insertText = str(label) if insertText is None else str(insertText)
+        self.detail = str(label) if detail is None else str(detail)
 
     def __eq__(self, other) -> bool:
         try:
-            return (self.label == other.label) and (self.kind == other.kind) and (self.insertText == other.insertText)
+            return (self.label == other.label) and (self.kind == other.kind) and \
+                   (self.insertText == other.insertText) and (self.detail == other.detail)
         except AttributeError:
             return False
 
     def __ne__(self, other) -> bool:
         try:
-            return (self.label != other.label) or (self.kind != other.kind) or (self.insertText != other.insertText)
+            return (self.label != other.label) or (self.kind != other.kind) or \
+                   (self.insertText != other.insertText) or (self.detail != other.detail)
         except AttributeError:
             return True
 
@@ -372,7 +375,8 @@ class JSONEncoder(json.JSONEncoder):
             final_dict = {
                 "label": o.label,
                 "kind": o.kind,
-                "insertText": o.insertText
+                "insertText": o.insertText,
+                "detail": o.detail
             }
         elif isinstance(o, Diagnostic):
             final_dict = {
