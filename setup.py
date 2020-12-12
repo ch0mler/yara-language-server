@@ -6,6 +6,8 @@ An implementation of the Language Server Protocol for the YARA pattern matching 
     https://microsoft.github.io/language-server-protocol/
 """
 
+VERSION="0.0.2"
+
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Programming Language :: Python :: 3.7',
@@ -24,7 +26,7 @@ with open("README.md", "r") as long_description:
         description=DESCRIPTION,
         download_url="https://github.com/ch0mler/yara-language-server",
         entry_points=entry_points,
-        long_description=long_description,
+        long_description=long_description.read(),
         long_description_content_type="text/markdown",
         name="yara-language-server",
         packages=find_packages(),
@@ -33,5 +35,5 @@ with open("README.md", "r") as long_description:
         python_requires=">=3.7",
         tests_require=["pytest", "pytest-asyncio", "pytest-timeout"],
         url="https://ch0mler.github.io/yara-language-server/",
-        version="0.0.1",
+        version=VERSION,
     )
