@@ -522,6 +522,8 @@ class YaraLanguageServer(LanguageServer):
                     # plyara parses out each rule individually from the document
                     for rule in contents:
                         self._logger.debug("Received formatting request for '%s'", rule["rule_name"])
+                        if rule.get("imports"):
+                            del rule["imports"]
                         # easy mode: rebuild rules with plyara too and post-process based on format options
                         formatted_text = plyara_utils.rebuild_yara_rule(rule)
                         # by default plyara appends a newline - remove it here and post-process later

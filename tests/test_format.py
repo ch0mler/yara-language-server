@@ -229,3 +229,21 @@ async def test_format_notify_user(test_rules, uninstall_pkg, yara_server):
     with pytest.raises(ce.NoDependencyFound) as excinfo:
         await yara_server.provide_formatting(message, True)
     assert expected_msg == str(excinfo.value)
+
+@pytest.mark.asyncio
+async def test_format_no_imports(test_rules, yara_server):
+    ''' Ensure imports are removed from provided rules. They should not be affected by formatter '''
+    rulefile = str(test_rules.joinpath("code_completion.yara").resolve())
+    file_uri = helpers.create_file_uri(rulefile)
+    message = {
+        "params": {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": 9, "character": 12}
+        }
+    }
+    result = await yara_server.provide_formatting(message, True)
+    assert len(result) == 3
+    assert all([isinstance(edit, protocol.TextEdit) for edit in result])
+    full_text = "\n".join([edit.newText for edit in result])
+    # should only be two imports - one for cuckoo and one for pe
+    assert full_text.count("import ") == 0
