@@ -217,7 +217,7 @@ class YaraLanguageServer(LanguageServer):
             If 'compile_on_save' is True, analyze saved document and publish diagnostics
         '''
         # first make sure the file is no longer tracked as dirty
-        super().event_did_save(has_started, **kwargs)
+        await super().event_did_save(has_started, **kwargs)
         message = kwargs.pop("message", {})
         params = message.get("params", {})
         file_uri = params.get("textDocument", {}).get("uri", "")
