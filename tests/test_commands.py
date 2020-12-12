@@ -1,5 +1,6 @@
 ''' Command Tests '''
 import json
+from textwrap import dedent
 
 import pytest
 from yarals import helpers
@@ -70,7 +71,10 @@ async def test_cmd_compile_all_rules_no_workspace(initialize_msg, initialized_ms
     expected = {"result": None}
     expected_msg = "wrong usage of identifier \"cuckoo\""
     file_path = test_rules.joinpath("code_completion.yara").resolve()
-    contents = open(file_path, "r").read().replace("ModuleCompletionExample", "ModifiedExample")
+    contents = dedent("""
+    import \"cuckoo\"
+    rule ModuleCompletionExample { condition: cuckoo }
+    """)
     did_change = {
         "jsonrpc":"2.0",
         "method":"textDocument/didChange",
@@ -135,9 +139,9 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
             "uri": helpers.create_file_uri(str(test_rules.joinpath("code_completion.yara").resolve())),
             "diagnostics": [
                 protocol.Diagnostic(
-                    protocol.Range(protocol.Position(line=10, char=0), protocol.Position(line=10, char=yara_server.MAX_LINE)),
+                    protocol.Range(protocol.Position(line=27, char=0), protocol.Position(line=27, char=yara_server.MAX_LINE)),
                     severity=protocol.DiagnosticSeverity.ERROR,
-                    message="wrong usage of identifier \"cuckoo\""
+                    message="wrong usage of identifier \"is_dll\""
                 )
             ]
         },
@@ -174,9 +178,9 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
             "uri": helpers.create_file_uri(str(test_rules.joinpath("code_completion.yara").resolve())),
             "diagnostics": [
                 protocol.Diagnostic(
-                    protocol.Range(protocol.Position(line=10, char=0), protocol.Position(line=10, char=yara_server.MAX_LINE)),
+                    protocol.Range(protocol.Position(line=27, char=0), protocol.Position(line=27, char=yara_server.MAX_LINE)),
                     severity=protocol.DiagnosticSeverity.ERROR,
-                    message="wrong usage of identifier \"cuckoo\""
+                    message="wrong usage of identifier \"is_dll\""
                 )
             ]
         },
