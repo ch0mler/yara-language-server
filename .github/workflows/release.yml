@@ -1,0 +1,78 @@
+# This workflow will create a new release based on the tagged version
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build.outputs.version }}
+      wheel: ${{ steps.wheel.outputs.version }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7'
+    - name: Install yara-language-server and dependencies
+      id: build
+      run: |
+        pip install --upgrade pip
+        pip install setuptools wheel
+        pip wheel .
+        pip install $(ls *.whl)
+        pip install -r requirements.txt
+        echo "::set-output name=version::$(pip show yara-language-server | grep Version | cut -d ' ' -f2)"
+    - name: Get wheel name
+      id: wheel
+      run: |
+        echo "WHEEL=$(find . -type f -name 'yara_language_server*.whl')" >> $GITHUB_ENV
+    - name: Upload package as an artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.WHEEL }}
+        path: ${{ env.WHEEL }}
+        if-no-files-found: error
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    outputs:
+      release_url: ${{ steps.create-release.outputs.upload_url }}
+    steps:
+    - name: Download wheel
+      id: download-wheel
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ needs.package.outputs.wheel }}
+    - name: Determine prerelease
+      id: prerelease
+      # if the package version still has a major version of 0, consider this a prerelease
+      run: |
+        [ ${{ needs.package.outputs.version }} < "1.0.0" ] \
+        && echo "PRE=true" >> $GITHUB_ENV \
+        || echo "PRE=false" >> $GITHUB_ENV
+    - name: Create release
+      id: create-release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: ${{ github.ref }}
+        prerelease: ${{ env.PRE }}
+    - name: Upload release asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ${{ needs.package.outputs.wheel }}
+        asset_name: ${{ needs.package.outputs.wheel }}
+        asset_content_type: application/zip
