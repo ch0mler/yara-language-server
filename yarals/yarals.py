@@ -364,10 +364,10 @@ class YaraLanguageServer(LanguageServer):
                                     elif str(item_type).lower() == "property":
                                         detail = trigger.join(symbols[:depth] + [label])
                                         results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.PROPERTY, detail=detail))
-                                    elif str(item_type).lower() == "method":
+                                    elif str(item_type).lower() == "function":
                                         snippet = "{}()".format(label)
                                         detail = trigger.join(symbols[:depth] + [snippet])
-                                        results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.METHOD, insertText=snippet, detail=detail))
+                                        results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.FUNCTION, insertText=snippet, detail=detail))
                                     else:
                                         results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.CLASS, detail=detail))
                     else:

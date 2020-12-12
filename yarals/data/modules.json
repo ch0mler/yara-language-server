@@ -5,7 +5,7 @@
         "base_of_data": "property",
         "BYTES_REVERSED_LO": "enum",
         "BYTES_REVERSED_HI": "enum",
-        "calculate_checksum": "method",
+        "calculate_checksum": "function",
         "characteristics": "property",
         "checksum": "property",
         "data_directories": {
@@ -20,7 +20,7 @@
         "EXECUTABLE_IMAGE": "enum",
         "file_alignment": "property",
         "FORCE_INTEGRITY": "enum",
-        "exports": "method",
+        "exports": "function",
         "id": "property",
         "image_base": "property",
         "IMAGE_DIRECTORY_ENTRY_BASERELOC": "enum",
@@ -40,14 +40,14 @@
             "major": "property",
             "minor": "property"
         },
-        "imphash": "method",
-        "imports": "method",
-        "is_dll": "method",
-        "is_32bit": "method",
-        "is_64bit": "method",
+        "imphash": "function",
+        "imports": "function",
+        "is_dll": "function",
+        "is_32bit": "function",
+        "is_64bit": "function",
         "key": "property",
-        "language": "method",
-        "language_string": "method",
+        "language": "function",
+        "language_string": "function",
         "LARGE_ADDRESS_AWARE": "enum",
         "LINE_NUMS_STRIPPED": "enum",
         "linker_version": {
@@ -55,7 +55,7 @@
             "minor": "property"
         },
         "loader_flags": "property",
-        "locale": "method",
+        "locale": "function",
         "LOCAL_SYMS_STRIPPED": "enum",
         "machine": "property",
         "MACHINE_AM33": "enum",
@@ -148,10 +148,10 @@
             "length": "property",
             "offset": "property",
             "raw_data": "property",
-            "toolid": "method",
-            "version": "method"
+            "toolid": "function",
+            "version": "function"
         },
-        "rva_to_offset": "method",
+        "rva_to_offset": "function",
         "sections": {
             "characteristics": "property",
             "name": "property",
@@ -174,7 +174,7 @@
         "SECTION_MEM_SHARED": "enum",
         "SECTION_MEM_WRITE": "enum",
         "SECTION_MEM_16BIT": "enum",
-        "section_index": "method",
+        "section_index": "function",
         "signatures": {
             "algorithm": "property",
             "issuer": "property",
@@ -183,8 +183,8 @@
             "serial": "property",
             "subject": "property",
             "thumbprint": "property",
-            "valid_on": "method",
-            "version": "method"
+            "valid_on": "function",
+            "version": "function"
         },
         "size_of_code": "property",
         "size_of_headers": "property",
@@ -364,40 +364,40 @@
     },
     "cuckoo": {
         "network": {
-            "dns_lookup": "method",
-            "http_get": "method",
-            "http_post": "method",
-            "http_request": "method"
+            "dns_lookup": "function",
+            "http_get": "function",
+            "http_post": "function",
+            "http_request": "function"
         },
         "registry": {
-            "key_access": "method"
+            "key_access": "function"
         },
         "filesystem": {
-            "file_access": "method"
+            "file_access": "function"
         },
         "sync": {
-            "mutex": "method"
+            "mutex": "function"
         }
     },
     "magic": {
-        "mime_type": "method",
-        "type": "method"
+        "mime_type": "function",
+        "type": "function"
     },
     "hash": {
-        "checksum32": "method",
-        "md5": "method",
-        "sha1": "method",
-        "sha256": "method"
+        "checksum32": "function",
+        "md5": "function",
+        "sha1": "function",
+        "sha256": "function"
     },
     "math": {
-        "deviation": "method",
-        "entropy": "method",
-        "in_range": "method",
-        "max": "method",
-        "mean": "method",
-        "min": "method",
-        "monte_carlo_pi": "method",
-        "serial_correlation": "method"
+        "deviation": "function",
+        "entropy": "function",
+        "in_range": "function",
+        "max": "function",
+        "mean": "function",
+        "min": "function",
+        "monte_carlo_pi": "function",
+        "serial_correlation": "function"
     },
     "dotnet": {
         "assembly": {
@@ -434,6 +434,6 @@
         "version": "property"
     },
     "time": {
-        "now": "method"
+        "now": "function"
     }
 }

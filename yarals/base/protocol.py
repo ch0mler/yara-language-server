@@ -41,6 +41,7 @@ class JsonRPCError(IntEnum):
 
 class CompletionItemKind(IntEnum):
     METHOD = 1
+    FUNCTION = 2
     INTERFACE = 7
     CLASS = 7
     PROPERTY = 9

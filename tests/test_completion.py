@@ -83,10 +83,10 @@ async def test_code_completion_module_dictionary(test_rules, yara_server):
     assert actual == expected
 
 @pytest.mark.asyncio
-async def test_code_completion_module_method(test_rules, yara_server):
-    ''' Ensure code completion returns a properly-formatted snippet string when a module entry is a method '''
+async def test_code_completion_module_function(test_rules, yara_server):
+    ''' Ensure code completion returns a properly-formatted snippet string when a module entry is a function '''
     expected = [
-        protocol.CompletionItem("is_dll", protocol.CompletionItemKind.METHOD, detail="pe.is_dll()", insertText="is_dll()")
+        protocol.CompletionItem("is_dll", protocol.CompletionItemKind.FUNCTION, detail="pe.is_dll()", insertText="is_dll()")
     ]
     code_completion = str(test_rules.joinpath("code_completion.yara").resolve())
     file_uri = helpers.create_file_uri(code_completion)
