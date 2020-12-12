@@ -340,6 +340,11 @@ class YaraLanguageServer(LanguageServer):
                         possible_terms = list(filter(lambda k: str(k).startswith(symbol), schema))
                         for label in possible_terms:
                             completion_items = schema.get(label, {})
+                            # if we're at the bottom of the modules list construct a dictionary
+                            # so we can treat these the same as at any other point in the schema
+                            # ... it's confusing and terrible. I'm sorry
+                            if isinstance(completion_items, str):
+                                completion_items = {label: completion_items}
                             # some module items are dictionaries with pre-set keys, such as pe.version_info
                             # we define these in the schema as a list of such keys
                             if isinstance(completion_items, list):
@@ -347,18 +352,24 @@ class YaraLanguageServer(LanguageServer):
                                 # desired output: pe.version_info["CompanyName"]
                                 for entry in completion_items:
                                     snippet = "{}[\"{}\"]".format(label, entry)
-                                    results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.INTERFACE, insertText=snippet))
+                                    detail = trigger.join(symbols[:depth] + [snippet])
+                                    results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.INTERFACE, detail=detail, insertText=snippet))
                             elif isinstance(completion_items, dict):
-                                for entry in completion_items:
+                                for entry, item_type in completion_items.items():
                                     # desired output: cuckoo.filesystem.
-                                    results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.CLASS))
-                            elif str(completion_items).lower() == "enum":
-                                results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.ENUM))
-                            elif str(completion_items).lower() == "property":
-                                results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.PROPERTY))
-                            elif str(completion_items).lower() == "method":
-                                snippet = "{}()".format(label)
-                                results.append(lsp.CompletionItem(label, lsp.CompletionItemKind.METHOD, insertText=snippet))
+                                    detail = trigger.join(symbols + [entry])
+                                    if str(item_type).lower() == "enum":
+                                        detail = trigger.join(symbols[:depth] + [entry])
+                                        results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.ENUM, detail=detail))
+                                    elif str(item_type).lower() == "property":
+                                        detail = trigger.join(symbols[:depth] + [entry])
+                                        results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.PROPERTY, detail=detail))
+                                    elif str(item_type).lower() == "method":
+                                        snippet = "{}()".format(entry)
+                                        detail = trigger.join(symbols[:depth] + [snippet])
+                                        results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.METHOD, insertText=snippet, detail=detail))
+                                    else:
+                                        results.append(lsp.CompletionItem(entry, lsp.CompletionItemKind.CLASS, detail=detail))
                     else:
                         schema = schema[symbol]
                 return results
