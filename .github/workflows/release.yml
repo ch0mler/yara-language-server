@@ -32,7 +32,7 @@ jobs:
     - name: Get wheel name
       id: wheel
       run: |
-        echo "WHEEL=$(find . -type f -name 'yara_language_server*.whl')" >> $GITHUB_ENV
+        echo "WHEEL=$(find . -type f -name 'yara_language_server*.whl' -printf '%f\n')" >> $GITHUB_ENV
     - name: Upload package as an artifact
       uses: actions/upload-artifact@v2
       with:
