@@ -67,13 +67,13 @@ def test_diagnostic_comparisons():
 def test_completionitem():
     ''' Ensure CompletionItem is properly encoded to JSON dictionaries '''
     comp_dict = {"label": "test", "kind": protocol.CompletionItemKind.CLASS, "insertText": "test($1)"}
-    comp = protocol.CompletionItem(label=comp_dict["label"], kind=comp_dict["kind"], snippet=comp_dict["insertText"])
+    comp = protocol.CompletionItem(label=comp_dict["label"], kind=comp_dict["kind"], insertText=comp_dict["insertText"])
     assert json.dumps(comp, cls=protocol.JSONEncoder) == json.dumps(comp_dict)
 
 @pytest.mark.protocol
 def test_completionitem_comparisons():
     ''' Ensure CompletionItems can be properly compared '''
-    comp = protocol.CompletionItem(label="Test CompletionItem", kind=protocol.CompletionItemKind.CLASS, snippet="test($1)")
+    comp = protocol.CompletionItem(label="Test CompletionItem", kind=protocol.CompletionItemKind.CLASS, insertText="test($1)")
     comp_same = deepcopy(comp)
     assert comp == comp_same
     comp_label = deepcopy(comp)

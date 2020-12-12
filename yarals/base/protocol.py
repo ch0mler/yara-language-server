@@ -128,13 +128,13 @@ class Range():
         return "<Range(start={}, end={})>".format(self.start, self.end)
 
 class CompletionItem():
-    def __init__(self, label: str, kind: CompletionItemKind=CompletionItemKind.CLASS, snippet: Optional[str]=None):
+    def __init__(self, label: str, kind: CompletionItemKind=CompletionItemKind.CLASS, insertText: Optional[str]=None):
         ''' Suggested items for the user '''
         self.label = str(label)
         self.kind = int(kind)
         # default to using the label as the insertion text, otherwise use provided snippet string
         # pylint: disable=C0103
-        self.insertText = str(label) if snippet is None else str(snippet)
+        self.insertText = str(label) if insertText is None else str(insertText)
 
     def __eq__(self, other) -> bool:
         try:
