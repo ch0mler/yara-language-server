@@ -66,14 +66,14 @@ def test_diagnostic_comparisons():
 @pytest.mark.protocol
 def test_completionitem():
     ''' Ensure CompletionItem is properly encoded to JSON dictionaries '''
-    comp_dict = {"label": "test", "kind": protocol.CompletionItemKind.CLASS}
-    comp = protocol.CompletionItem(label=comp_dict["label"], kind=comp_dict["kind"])
+    comp_dict = {"label": "test", "kind": protocol.CompletionItemKind.CLASS, "insertText": "test($1)"}
+    comp = protocol.CompletionItem(label=comp_dict["label"], kind=comp_dict["kind"], snippet=comp_dict["insertText"])
     assert json.dumps(comp, cls=protocol.JSONEncoder) == json.dumps(comp_dict)
 
 @pytest.mark.protocol
 def test_completionitem_comparisons():
-    ''' Ensure Comp letionItems can be properly compared '''
-    comp = protocol.CompletionItem(label="Test CompletionItem", kind=protocol.CompletionItemKind.CLASS)
+    ''' Ensure CompletionItems can be properly compared '''
+    comp = protocol.CompletionItem(label="Test CompletionItem", kind=protocol.CompletionItemKind.CLASS, snippet="test($1)")
     comp_same = deepcopy(comp)
     assert comp == comp_same
     comp_label = deepcopy(comp)
@@ -82,6 +82,9 @@ def test_completionitem_comparisons():
     comp_kind = deepcopy(comp)
     comp_kind.kind = protocol.CompletionItemKind.METHOD
     assert comp != comp_kind
+    comp_snippet = deepcopy(comp)
+    comp_snippet.insertText = "different($2)"
+    assert comp != comp_snippet
 
 @pytest.mark.protocol
 def test_location():

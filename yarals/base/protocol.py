@@ -40,10 +40,11 @@ class JsonRPCError(IntEnum):
     CONTENT_MODIFIED = -32801
 
 class CompletionItemKind(IntEnum):
-    METHOD = 2
+    METHOD = 1
+    INTERFACE = 7
     CLASS = 7
-    PROPERTY = 10
-    ENUM = 13
+    PROPERTY = 9
+    ENUM = 12
 
 class DiagnosticSeverity(IntEnum):
     ERROR = 1
@@ -127,25 +128,28 @@ class Range():
         return "<Range(start={}, end={})>".format(self.start, self.end)
 
 class CompletionItem():
-    def __init__(self, label: str, kind=CompletionItemKind.CLASS):
-        ''' Suggested items for the programmer '''
+    def __init__(self, label: str, kind: CompletionItemKind=CompletionItemKind.CLASS, snippet: Optional[str]=None):
+        ''' Suggested items for the user '''
         self.label = str(label)
         self.kind = int(kind)
+        # default to using the label as the insertion text, otherwise use provided snippet string
+        # pylint: disable=C0103
+        self.insertText = str(label) if snippet is None else str(snippet)
 
     def __eq__(self, other) -> bool:
         try:
-            return (self.label == other.label) and (self.kind == other.kind)
+            return (self.label == other.label) and (self.kind == other.kind) and (self.insertText == other.insertText)
         except AttributeError:
             return False
 
     def __ne__(self, other) -> bool:
         try:
-            return (self.label != other.label) or (self.kind != other.kind)
+            return (self.label != other.label) or (self.kind != other.kind) or (self.insertText != other.insertText)
         except AttributeError:
             return True
 
     def __repr__(self):
-        return "<CompletionItem(label={}, kind={:d})>".format(self.label, self.kind)
+        return "<CompletionItem(label=\"{}\", kind={:d}, insertText=\"{}\")>".format(self.label, self.kind, self.insertText)
 
 class Diagnostic():
     def __init__(self, locrange: Range, severity: int, message: str, relatedInformation: Optional[List]=None):
@@ -363,10 +367,12 @@ class JSONEncoder(json.JSONEncoder):
     ''' Custom JSON encoder '''
     def default(self, o):
         final_dict = {}
+        # TODO: Define a "json_encoded" method in each class and just call that
         if isinstance(o, CompletionItem):
             final_dict = {
                 "label": o.label,
-                "kind": o.kind
+                "kind": o.kind,
+                "insertText": o.insertText
             }
         elif isinstance(o, Diagnostic):
             final_dict = {
