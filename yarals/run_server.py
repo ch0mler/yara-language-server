@@ -9,6 +9,14 @@ from pathlib import Path
 
 from yarals.yarals import YaraLanguageServer
 
+try:
+    # asyncio exceptions changed from 3.6 > 3.7 > 3.8
+    # so try to keep this compatible regardless of Python version 3.6+
+    # https://medium.com/@jflevesque/asyncio-exceptions-changes-from-python-3-6-to-3-7-to-3-8-cancellederror-timeouterror-f79945ead378
+    from asyncio import CancelledError
+except ImportError:
+    from concurrent.futures import CancelledError
+
 
 def _build_cli():
     # default log file path is ~/.yara.log
@@ -63,7 +71,7 @@ async def run_server():
         try:
             async with socket_server:
                 await socket_server.serve_forever()
-        except asyncio.CancelledError:
+        except CancelledError:
             logger.info("Server has successfully shutdown")
     except KeyboardInterrupt:
         logger.info("Ending per user request")

@@ -12,7 +12,7 @@ try:
     # asyncio exceptions changed from 3.6 > 3.7 > 3.8
     # so try to keep this compatible regardless of Python version 3.6+
     # https://medium.com/@jflevesque/asyncio-exceptions-changes-from-python-3-6-to-3-7-to-3-8-cancellederror-timeouterror-f79945ead378
-    from asyncio.exceptions import CancelledError
+    from asyncio import CancelledError
 except ImportError:
     from concurrent.futures import CancelledError
 

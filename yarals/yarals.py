@@ -14,6 +14,15 @@ from .base import errors as ce
 from .base.server import LanguageServer, RouteType
 from . import helpers
 
+try:
+    # asyncio exceptions changed from 3.6 > 3.7 > 3.8
+    # so try to keep this compatible regardless of Python version 3.6+
+    # https://medium.com/@jflevesque/asyncio-exceptions-changes-from-python-3-6-to-3-7-to-3-8-cancellederror-timeouterror-f79945ead378
+    from asyncio import CancelledError, TimeoutError as AsyncTimeoutError
+except ImportError:
+    from concurrent.futures import CancelledError, TimeoutError as AsyncTimeoutError
+
+
 # extra YARA module data from this path
 SCHEMA = Path(__file__).parent.joinpath("data", "modules.json").resolve()
 
@@ -250,7 +259,7 @@ class YaraLanguageServer(LanguageServer):
                     # done with diagnostics - nothing needs to be returned
                 else:
                     self._logger.warning("Unknown command: %s [%s]", cmd, ",".join(args))
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except (ce.DiagnosticError,) as err:
             # only add an error code if we see one
@@ -283,7 +292,7 @@ class YaraLanguageServer(LanguageServer):
             else:
                 self._logger.error("Encountered an unknown request method '%s'. No associated method listed in routes", method)
                 await self.send_response(msg_id, None, writer)
-        except asyncio.exceptions.TimeoutError:
+        except AsyncTimeoutError:
             self._logger.warning("Task for message %d timed out! %s", msg_id, message)
             # always need to send a response to requests, even if it's just null
             await self.send_response(msg_id, None, writer)
@@ -373,7 +382,7 @@ class YaraLanguageServer(LanguageServer):
                     else:
                         schema = schema[symbol]
                 return results
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except Exception as err:
             self._logger.error(err)
@@ -431,7 +440,7 @@ class YaraLanguageServer(LanguageServer):
             except re.error:
                 self._logger.debug("Error building regex pattern: %s", pattern)
                 return []
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except Exception as err:
             self._logger.error(err)
@@ -483,7 +492,7 @@ class YaraLanguageServer(LanguageServer):
                         message=msg
                     )
                 )
-            except asyncio.CancelledError as err:
+            except CancelledError as err:
                 raise err
             except Exception as err:
                 self._logger.error(err)
@@ -554,7 +563,7 @@ class YaraLanguageServer(LanguageServer):
                             end=lsp.Position(line=rule["stop_line"]-1, char=self.MAX_LINE)
                         )
                         edits.append(lsp.TextEdit(document_range, formatted_text))
-            except asyncio.CancelledError as err:
+            except CancelledError as err:
                 raise err
             except plyara.exceptions.ParseTypeError as err:
                 writer = kwargs.pop("writer")
@@ -582,7 +591,7 @@ class YaraLanguageServer(LanguageServer):
                 # TODO: Add document highlighting
                 self._logger.warning("provide_highlight() is not implemented")
                 return results
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except Exception as err:
             self._logger.error(err)
@@ -609,7 +618,7 @@ class YaraLanguageServer(LanguageServer):
                     except IndexError as err:
                         self._logger.warning(words)
                         self._logger.warning("IndexError at line %d: '%s'", definition.range.start.line, line)
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except Exception as err:
             self._logger.error(err)
@@ -671,7 +680,7 @@ class YaraLanguageServer(LanguageServer):
                             )
                             results.append(lsp.Location(locrange, file_uri))
                 return results
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except re.error:
             self._logger.debug("Error building regex pattern: %s", pattern)
@@ -710,7 +719,7 @@ class YaraLanguageServer(LanguageServer):
                 if len(results.changes) <= 0:
                     self._logger.warning("No symbol references found to rename. Skipping")
                 return results
-        except asyncio.CancelledError as err:
+        except CancelledError as err:
             raise err
         except Exception as err:
             self._logger.error(err)
