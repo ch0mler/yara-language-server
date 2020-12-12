@@ -155,6 +155,7 @@ async def test_initialize(initialize_msg, initialized_msg, open_streams, yara_se
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+@pytest.mark.skipif('sys.platform == "win32"')  # subprocess support is weird on Windows
 async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_streams, uninstall_pkg, yara_server):
     '''Ensure server responds with appropriate initialization handshake without plyara installed
 
@@ -188,7 +189,8 @@ async def test_initialize_without_plyara(initialize_msg, initialized_msg, open_s
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-@pytest.mark.xfail(reason="package installation issues")
+@pytest.mark.skipif('sys.platform == "win32"')  # subprocess support is weird on Windows
+# @pytest.mark.xfail(reason="package installation issues")
 async def test_initialize_without_yara(initialize_msg, initialized_msg, open_streams, uninstall_pkg, yara_server):
     ''' Ensure server responds with appropriate initialization handshake without yara-python installed '''
     expected_initialize = {
