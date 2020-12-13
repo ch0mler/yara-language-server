@@ -36,8 +36,8 @@ jobs:
     - name: Upload package as an artifact
       uses: actions/upload-artifact@v2
       with:
-        name: ${{ steps.wheel.outputs.wheel }}
-        path: ${{ steps.wheel.outputs.wheel }}
+        name: ${{ steps.wheel.outputs.pkg-name }}
+        path: ${{ steps.wheel.outputs.pkg-name }}
         if-no-files-found: error
   release:
     needs: package
