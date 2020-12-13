@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build.outputs.version }}
-      wheel: ${{ steps.wheel.outputs.version }}
+      wheel: ${{ steps.wheel.outputs.pkg-name }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -32,7 +32,7 @@ jobs:
     - name: Get wheel name
       id: wheel
       run: |
-        echo "::set-output name=wheel::$(find . -type f -name 'yara_language_server*.whl' -printf '%f\n')"
+        echo "::set-output name=pkg-name::$(find . -type f -name 'yara_language_server*.whl' -printf '%f\n')"
     - name: Upload package as an artifact
       uses: actions/upload-artifact@v2
       with:
@@ -53,8 +53,8 @@ jobs:
       # if the package version still has a major version of 0, consider this a prerelease
       run: |
         [[ "${{ needs.package.outputs.version }}" < "1.0.0" ]] \
-        && echo "PRE=true" >> $GITHUB_ENV \
-        || echo "PRE=false" >> $GITHUB_ENV
+        && echo "PRERELEASE=true" >> $GITHUB_ENV \
+        || echo "PRERELEASE=false" >> $GITHUB_ENV
     - name: Create release
       id: create-release
       uses: actions/create-release@v1
@@ -63,7 +63,7 @@ jobs:
       with:
         tag_name: ${{ github.ref }}
         release_name: ${{ github.ref }}
-        prerelease: ${{ env.PRE }}
+        prerelease: ${{ env.PRERELEASE }}
     - name: Upload release asset
       id: upload-release-asset
       uses: actions/upload-release-asset@v1
