@@ -43,7 +43,7 @@ jobs:
     - name: Get package version (Windows)
       if: runner.os == 'Windows'
       run: |
-        echo "YARALS_VERSION=$(pip show yara-language-server | Select-String Version | $_.replace("Version: ", ""))" >> $GITHUB_ENV
+        echo "YARALS_VERSION=$(pip show yara-language-server | Select-String Version | $_.replace('Version: ', ''))" >> $GITHUB_ENV
     - name: Lint Package
       run: |
         pylint --rcfile=.pylintrc --exit-zero ./yarals | tee pylint-pkg.txt
