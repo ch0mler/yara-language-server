@@ -36,7 +36,14 @@ jobs:
         pip wheel .
         pip install $(ls *.whl)
         pip install -r requirements.txt
+    - name: Get package version
+      if: runner.os != 'Windows'
+      run: |
         echo "YARALS_VERSION=$(pip show yara-language-server | grep Version | cut -d ' ' -f2)" >> $GITHUB_ENV
+    - name: Get package version (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "YARALS_VERSION=$(pip show yara-language-server | Select-String Version | $_.replace("Version: ", ""))" >> $GITHUB_ENV
     - name: Lint Package
       run: |
         pylint --rcfile=.pylintrc --exit-zero ./yarals | tee pylint-pkg.txt
