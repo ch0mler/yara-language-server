@@ -32,7 +32,7 @@ jobs:
     - name: Ensure package version matches tag
       id: tag-check
       run: |
-        [[ ${{ github.ref }} != "refs/tags/${{ steps.build.outputs.version }}" ]] && exit 1
+        [[ "${{ github.ref }}" == "refs/tags/${{ steps.build.outputs.version }}" ]] && echo "Tag matches package version" || exit 1
     - name: Get wheel name
       id: wheel
       run: |
