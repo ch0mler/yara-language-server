@@ -31,7 +31,7 @@ jobs:
         echo "::set-output name=version::$(pip show yara-language-server | grep Version | cut -d ' ' -f2)"
     - name: Ensure package version matches tag
       id: tag-check
-      if: ${{ github.ref != "refs/tags/steps.build.outputs.version" }}
+      if: ${{ $(echo github.ref | sed s@refs/tags/@@) != steps.build.outputs.version }}
       run: exit 1
     - name: Get wheel name
       id: wheel
