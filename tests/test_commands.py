@@ -157,20 +157,6 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
             ]
         }
     ]
-    if sys.platform == 'win32':
-        # on Windows, yara-python does not come with dynamic-linking automatically enabled
-        # so pe.number_of_signatures will throw an error that isn't present on NIX devices
-        # TODO: fix yara-python installation automatically
-        expected.append({
-            "uri": helpers.create_file_uri(str(test_rules.joinpath("formatting.yar").resolve())),
-            "diagnostics": [
-                protocol.Diagnostic(
-                    protocol.Range(protocol.Position(line=0, char=0), protocol.Position(line=0, char=yara_server.MAX_LINE)),
-                    severity=protocol.DiagnosticSeverity.ERROR,
-                    message="invalid field name \"number_of_signatures\""
-                )
-            ]
-        })
     results = await yara_server._compile_all_rules({}, workspace=test_rules)
     assert len(results) == len(expected)
     assert all(result in expected for result in results)
