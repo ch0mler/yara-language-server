@@ -52,7 +52,7 @@ jobs:
         pylint --rcfile=.pylintrc --exit-zero --disable=protected-access,import-error,duplicate-code $(ls -R ./tests/test_*.py) | tee pylint-tests.txt
     - name: Run tests
       run: |
-        pytest -vv --color=yes --timeout 10 | tee pytest-results.txt
+        pytest -vv --showlocals --color=yes --timeout 10 | tee pytest-results.txt
     - name: Upload pylint results
       uses: actions/upload-artifact@v2
       with:
