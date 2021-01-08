@@ -461,6 +461,7 @@ class YaraLanguageServer(LanguageServer):
             try:
                 yara.compile(source=document)
             except yara.SyntaxError as error:
+                self._logger.error(error)
                 line_no, msg = helpers.parse_result(str(error))
                 # VSCode is zero-indexed
                 line_no -= 1
