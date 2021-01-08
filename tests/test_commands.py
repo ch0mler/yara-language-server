@@ -178,6 +178,7 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
 
     results = await yara_server._compile_all_rules({}, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
+    print(json.dumps(results, cls=protocol.JSONEncoder))
     assert all(result in expected for result in results)
 
 @pytest.mark.asyncio
@@ -241,4 +242,5 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
         dirty_files[helpers.create_file_uri(dirty_path)] = yara_server._get_document(dirty_path, dirty_files={})
     results = await yara_server._compile_all_rules(dirty_files, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
+    print(json.dumps(results, cls=protocol.JSONEncoder))
     assert all(result in expected for result in results)
