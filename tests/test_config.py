@@ -1,6 +1,7 @@
 ''' Tests for yarals configuration reactions '''
 import json
 import logging
+import sys
 
 import pytest
 from yarals import helpers
@@ -40,7 +41,8 @@ async def test_compile_on_save_false(caplog, init_server, open_streams, test_rul
 @pytest.mark.integration
 async def test_compile_on_save_true(caplog, init_server, open_streams, test_rules, yara_server):
     ''' Ensure diagnostics are returned on save when 'compile_on_save' set to true '''
-    expected_msg = "syntax error, unexpected <true>, expecting text string"
+    # TODO: figure out why YARA emits different messages on Windows and non-Windows platforms
+    expected_msg = "undefined string \"$hex_string\"" if sys.platform == "win32" else "syntax error, unexpected <true>, expecting text string"
     expected_sev = protocol.DiagnosticSeverity.ERROR
     new_config = {"compile_on_save": True}
     peek_rules = str(test_rules.joinpath("peek_rules.yara").resolve())

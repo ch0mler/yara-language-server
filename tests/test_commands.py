@@ -126,7 +126,7 @@ async def test_cmd_compile_all_rules_no_workspace(initialize_msg, initialized_ms
 async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
     ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when no workspace files are dirty '''
     # TODO: figure out why YARA emits different messages on Windows and non-Windows platforms
-    peek_rules_msg = 'undefined string "$hex_string"' if sys.platform == 'win32' else "syntax error, unexpected <true>, expecting text string"
+    peek_rules_msg = "undefined string \"$hex_string\"" if sys.platform == "win32" else "syntax error, unexpected <true>, expecting text string"
     expected = [
         {
             "uri": helpers.create_file_uri(str(test_rules.joinpath("peek_rules.yara").resolve())),
@@ -167,7 +167,7 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
 async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
     ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when workspace files have unsaved content '''
     # TODO: figure out why YARA emits different messages on Windows and non-Windows platforms
-    peek_rules_msg = 'undefined string "$hex_string"' if sys.platform == 'win32' else "syntax error, unexpected <true>, expecting text string"
+    peek_rules_msg = "undefined string \"$hex_string\"" if sys.platform == "win32" else "syntax error, unexpected <true>, expecting text string"
     expected = [
         {
             "uri": helpers.create_file_uri(str(test_rules.joinpath("peek_rules.yara").resolve())),
