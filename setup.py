@@ -6,7 +6,7 @@ An implementation of the Language Server Protocol for the YARA pattern matching 
     https://microsoft.github.io/language-server-protocol/
 """
 
-VERSION="0.0.2"
+VERSION="0.0.3"
 
 classifiers = [
     'Development Status :: 3 - Alpha',
