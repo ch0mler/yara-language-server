@@ -126,17 +126,20 @@ async def test_cmd_compile_all_rules_no_workspace(initialize_msg, initialized_ms
 async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
     ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when no workspace files are dirty '''
     # TODO: figure out why YARA emits different messages on Windows and non-Windows platforms
-    peek_rules_msg = "undefined string \"$hex_string\"" if sys.platform == "win32" else "syntax error, unexpected <true>, expecting text string"
+    peek_rules_diagnostic = protocol.Diagnostic(
+        protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+        severity=protocol.DiagnosticSeverity.ERROR, message="syntax error, unexpected <true>, expecting text string"
+    )
+    if sys.platform == "win32":
+        peek_rules_diagnostic = protocol.Diagnostic(
+            protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+            severity=protocol.DiagnosticSeverity.ERROR, message="undefined string \"$hex_string\""
+        )
+
     expected = [
         {
             "uri": helpers.create_file_uri(str(test_rules.joinpath("peek_rules.yara").resolve())),
-            "diagnostics": [
-                protocol.Diagnostic(
-                    protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
-                    severity=protocol.DiagnosticSeverity.ERROR,
-                    message=peek_rules_msg
-                )
-            ]
+            "diagnostics": [peek_rules_diagnostic]
         },
         {
             "uri": helpers.create_file_uri(str(test_rules.joinpath("code_completion.yara").resolve())),
@@ -161,25 +164,28 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
     ]
     results = await yara_server._compile_all_rules({}, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
-    print(json.dumps(expected))
-    print(json.dumps(results))
+    print(json.dumps(expected, cls=protocol.JSONEncoder))
+    print(json.dumps(results, cls=protocol.JSONEncoder))
     assert all(result in expected for result in results)
 
 @pytest.mark.asyncio
 async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
     ''' Ensure the _compile_all_rules function returns the appropriate number of diagnostics when workspace files have unsaved content '''
     # TODO: figure out why YARA emits different messages on Windows and non-Windows platforms
-    peek_rules_msg = "undefined string \"$hex_string\"" if sys.platform == "win32" else "syntax error, unexpected <true>, expecting text string"
+    peek_rules_diagnostic = protocol.Diagnostic(
+        protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+        severity=protocol.DiagnosticSeverity.ERROR, message="syntax error, unexpected <true>, expecting text string"
+    )
+    if sys.platform == "win32":
+        peek_rules_diagnostic = protocol.Diagnostic(
+            protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+            severity=protocol.DiagnosticSeverity.ERROR, message="undefined string \"$hex_string\""
+        )
+
     expected = [
         {
             "uri": helpers.create_file_uri(str(test_rules.joinpath("peek_rules.yara").resolve())),
-            "diagnostics": [
-                protocol.Diagnostic(
-                    protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
-                    severity=protocol.DiagnosticSeverity.ERROR,
-                    message=peek_rules_msg
-                )
-            ]
+            "diagnostics": [peek_rules_diagnostic]
         },
         {
             "uri": helpers.create_file_uri(str(test_rules.joinpath("code_completion.yara").resolve())),
@@ -209,6 +215,6 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
         dirty_files[helpers.create_file_uri(dirty_path)] = yara_server._get_document(dirty_path, dirty_files={})
     results = await yara_server._compile_all_rules(dirty_files, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
-    print(json.dumps(expected))
-    print(json.dumps(results))
+    print(json.dumps(expected, cls=protocol.JSONEncoder))
+    print(json.dumps(results, cls=protocol.JSONEncoder))
     assert all(result in expected for result in results)
