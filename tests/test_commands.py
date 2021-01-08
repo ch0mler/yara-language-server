@@ -132,7 +132,7 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
     )
     if sys.platform == "win32":
         peek_rules_diagnostic = protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+            protocol.Range(protocol.Position(line=42, char=8), protocol.Position(line=42, char=yara_server.MAX_LINE)),
             severity=protocol.DiagnosticSeverity.ERROR, message="undefined string \"$hex_string\""
         )
 
@@ -164,8 +164,6 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
     ]
     results = await yara_server._compile_all_rules({}, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
-    print(json.dumps(expected, cls=protocol.JSONEncoder))
-    print(json.dumps(results, cls=protocol.JSONEncoder))
     assert all(result in expected for result in results)
 
 @pytest.mark.asyncio
@@ -178,7 +176,7 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
     )
     if sys.platform == "win32":
         peek_rules_diagnostic = protocol.Diagnostic(
-            protocol.Range(protocol.Position(line=17, char=8), protocol.Position(line=17, char=yara_server.MAX_LINE)),
+            protocol.Range(protocol.Position(line=42, char=8), protocol.Position(line=42, char=yara_server.MAX_LINE)),
             severity=protocol.DiagnosticSeverity.ERROR, message="undefined string \"$hex_string\""
         )
 
@@ -215,6 +213,4 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
         dirty_files[helpers.create_file_uri(dirty_path)] = yara_server._get_document(dirty_path, dirty_files={})
     results = await yara_server._compile_all_rules(dirty_files, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
-    print(json.dumps(expected, cls=protocol.JSONEncoder))
-    print(json.dumps(results, cls=protocol.JSONEncoder))
     assert all(result in expected for result in results)
