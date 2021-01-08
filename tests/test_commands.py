@@ -162,6 +162,20 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
             ]
         }
     ]
+    # py3.8 + py3.9 on Windows also add the following diagnostic
+    # may be related to https://github.com/VirusTotal/yara-python/issues/150
+    if sys.platform == "win32" and sys.version_info >= (3, 8):
+        expected.append({
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("formatting.yar").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=14, char=0), protocol.Position(line=14, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="invalid field name \"number_of_signatures\""
+                )
+            ]
+        })
+
     results = await yara_server._compile_all_rules({}, workspace=test_rules)
     assert len(results) == len(expected), "Mismatched number of results. Got {:d} but expected {:d}".format(len(results), len(expected))
     assert all(result in expected for result in results)
@@ -206,6 +220,20 @@ async def test__compile_all_rules_with_dirty_files(test_rules, yara_server):
             ]
         }
     ]
+    # py3.8 + py3.9 on Windows also add the following diagnostic
+    # may be related to https://github.com/VirusTotal/yara-python/issues/150
+    if sys.platform == "win32" and sys.version_info >= (3, 8):
+        expected.append({
+            "uri": helpers.create_file_uri(str(test_rules.joinpath("formatting.yar").resolve())),
+            "diagnostics": [
+                protocol.Diagnostic(
+                    protocol.Range(protocol.Position(line=14, char=0), protocol.Position(line=14, char=yara_server.MAX_LINE)),
+                    severity=protocol.DiagnosticSeverity.ERROR,
+                    message="invalid field name \"number_of_signatures\""
+                )
+            ]
+        })
+
     # files won't actually be changed, so the diagnostics should reflect the "no_dirty_files" test
     dirty_files = {}
     for filename in ["peek_rules.yara", "simple_mistake.yar", "code_completion.yara"]:
