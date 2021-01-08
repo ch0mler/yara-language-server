@@ -169,7 +169,7 @@ async def test__compile_all_rules_no_dirty_files(test_rules, yara_server):
             "uri": helpers.create_file_uri(str(test_rules.joinpath("formatting.yar").resolve())),
             "diagnostics": [
                 protocol.Diagnostic(
-                    protocol.Range(protocol.Position(line=14, char=0), protocol.Position(line=14, char=yara_server.MAX_LINE)),
+                    protocol.Range(protocol.Position(line=14, char=8), protocol.Position(line=14, char=yara_server.MAX_LINE)),
                     severity=protocol.DiagnosticSeverity.ERROR,
                     message="invalid field name \"number_of_signatures\""
                 )
